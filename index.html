@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#121318">
+<meta name="description" content="Feel – persönliches Gefühlsprotokoll. Daten bleiben auf dem Gerät.">
+<title>Feel</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<!-- ============================================================
+     CSS: das Aussehen. Farben stehen oben als Variablen (--name),
+     damit man sie an einer Stelle ändern kann.
+     ============================================================ -->
+<style>
+  :root {
+    color-scheme: dark;            /* Browser-eigene Elemente (Datumsauswahl) ebenfalls dunkel */
+    --bg: #121318;
+    --flaeche: #1c1e26;
+    --flaeche-2: #272a35;
+    --rand: #343847;
+    --text: #e9eaf0;
+    --text-leise: #9ca0b3;
+    --akzent: #8fa8ff;
+    --akzent-text: #0e1020;
+    --angenehm: #5ec4a8;
+    --unangenehm: #e8907f;
+    --eigen: #c4b2ff;
+    --koerper: #e3c06f;
+    --tab-hoehe: 64px;
+    --unten: env(safe-area-inset-bottom, 0px);   /* Platz für die Gestenleiste */
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 16px calc(var(--tab-hoehe) + var(--unten) + 24px);
+  }
+
+  .kopf {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: calc(env(safe-area-inset-top, 0px) + 18px) 0 12px;
+  }
+  h1 { font-size: 1.5rem; margin: 0; }
+  .leise { color: var(--text-leise); font-size: .95rem; }
+  .hinweis { color: var(--text-leise); font-size: .9rem; margin-top: 20px; }
+
+  /* ---------- Eingabefelder ---------- */
+  .feld { margin: 0 0 22px; border: 0; padding: 0; min-width: 0; }
+  label, legend {
+    display: block; padding: 0; margin-bottom: 8px;
+    font-weight: 600; font-size: .95rem; color: var(--text-leise);
+  }
+  input[type=text], input[type=date], input[type=datetime-local], textarea {
+    width: 100%; min-height: 50px; padding: 12px 14px;
+    font: inherit; color: var(--text);
+    background: var(--flaeche); border: 1px solid var(--rand); border-radius: 12px;
+  }
+  textarea { resize: vertical; }
+  input:focus-visible, textarea:focus-visible, button:focus-visible {
+    outline: 2px solid var(--akzent); outline-offset: 2px;
+  }
+  .gruppe {
+    margin: 14px 0 8px; font-size: .8rem; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--text-leise);
+  }
+  .zeile { display: flex; gap: 8px; margin-top: 14px; }
+  .zeile input { flex: 1; min-width: 0; }
+  .abstand-oben { margin-top: 12px; }
+
+  /* ---------- Chips (antippbare Wörter) ---------- */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    min-height: 44px; padding: 0 16px;
+    font: inherit; font-size: 1rem; color: var(--text);
+    background: var(--flaeche); border: 1.5px solid var(--rand); border-radius: 999px;
+    cursor: pointer;
+  }
+  .angenehm   { --farbe: var(--angenehm); }
+  .unangenehm { --farbe: var(--unangenehm); }
+  .eigen      { --farbe: var(--eigen); }
+  .koerper    { --farbe: var(--koerper); }
+  .chip[aria-pressed="true"] {
+    background: var(--farbe); border-color: var(--farbe);
+    color: #10121a; font-weight: 600;
+  }
+
+  /* ---------- Schieberegler für die Stärke ---------- */
+  .staerken { display: grid; gap: 10px; margin-top: 14px; }
+  .staerke {
+    background: var(--flaeche); border-radius: 14px;
+    border-left: 4px solid var(--farbe); padding: 6px 14px 4px;
+  }
+  .staerke-kopf { display: flex; align-items: center; gap: 10px; }
+  .staerke-kopf span { flex: 1; font-weight: 600; }
+  .staerke-kopf output { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .entfernen {
+    width: 44px; height: 44px; margin-right: -12px;
+    border: 0; background: none; color: var(--text-leise); font-size: 1.6rem; cursor: pointer;
+  }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 44px; margin: 0; background: transparent;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 8px; border-radius: 4px;
+    background: linear-gradient(to right, var(--farbe) var(--prozent), var(--flaeche-2) var(--prozent));
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 30px; height: 30px; margin-top: -11px;
+    border-radius: 50%; background: var(--farbe); border: 3px solid var(--bg);
+  }
+  input[type=range]::-moz-range-track { height: 8px; border-radius: 4px; background: var(--flaeche-2); }
+  input[type=range]::-moz-range-progress { height: 8px; border-radius: 4px; background: var(--farbe); }
+  input[type=range]::-moz-range-thumb {
+    width: 24px; height: 24px; border-radius: 50%; background: var(--farbe); border: 3px solid var(--bg);
+  }
+
+  /* ---------- Schalter "Besprechung" ---------- */
+  .schalter {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    min-height: 58px; padding: 10px 14px; margin: 0;
+    background: var(--flaeche); border-radius: 14px;
+    color: var(--text); font-size: 1rem; cursor: pointer;
+  }
+  .schalter input {
+    -webkit-appearance: none; appearance: none; flex-shrink: 0; position: relative;
+    width: 54px; height: 32px; margin: 0; border-radius: 16px;
+    background: var(--flaeche-2); border: 1px solid var(--rand); transition: background .2s;
+  }
+  .schalter input::after {
+    content: ""; position: absolute; top: 3px; left: 3px;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--text-leise); transition: transform .2s;
+  }
+  .schalter input:checked { background: var(--akzent); }
+  .schalter input:checked::after { transform: translateX(22px); background: #fff; }
+  .details { padding: 2px 4px 0; }
+
+  /* ---------- Segmente (eine Auswahl aus wenigen) ---------- */
+  .segmente {
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px;
+    padding: 4px; background: var(--flaeche); border-radius: 14px;
+  }
+  .segmente button {
+    min-height: 44px; border: 0; border-radius: 10px;
+    font: inherit; background: none; color: var(--text); cursor: pointer;
+  }
+  .segmente button[aria-pressed="true"] { background: var(--akzent); color: var(--akzent-text); font-weight: 600; }
+
+  /* ---------- Knöpfe ---------- */
+  .knopf {
+    min-height: 52px; padding: 0 16px; border-radius: 14px;
+    font: inherit; font-weight: 600; color: var(--text);
+    background: var(--flaeche-2); border: 1px solid var(--rand); cursor: pointer;
+  }
+  .knopf.haupt {
+    width: 100%; min-height: 56px; font-size: 1.1rem;
+    background: var(--akzent); color: var(--akzent-text); border-color: transparent;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+  }
+  .knopf.klein { min-height: 50px; }
+  .text-knopf {
+    min-height: 44px; padding: 0 4px; border: 0; background: none;
+    font: inherit; font-weight: 600; color: var(--akzent); cursor: pointer;
+  }
+  /* bleibt beim Scrollen über der Reiterleiste sichtbar */
+  .aktionen-unten {
+    position: sticky; z-index: 5; padding-top: 8px;
+    bottom: calc(var(--tab-hoehe) + var(--unten) + 10px);
+  }
+
+  /* ---------- Liste ---------- */
+  .karten { display: grid; gap: 12px; }
+  .karte { background: var(--flaeche); border-radius: 16px; padding: 14px 16px; }
+  .karte-zeit { color: var(--text-leise); font-size: .9rem; margin-bottom: 4px; }
+  .karte-situation { font-weight: 600; white-space: pre-wrap; }
+  .karte blockquote { margin: 6px 0; font-style: italic; white-space: pre-wrap; }
+  .karte-zeile { margin-top: 4px; font-size: .95rem; white-space: pre-wrap; }
+  .karte-zeile span { color: var(--text-leise); }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  .pill {
+    padding: 3px 10px; border-radius: 999px; font-size: .88rem;
+    color: var(--farbe); background: color-mix(in srgb, var(--farbe) 18%, transparent);
+  }
+  .leer { color: var(--text-leise); text-align: center; padding: 40px 12px; }
+
+  /* ---------- Export ---------- */
+  .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .schnellwahl { display: flex; gap: 8px; }
+  .schnellwahl .knopf { flex: 1; min-height: 44px; }
+  .vorschau {
+    margin: 0 0 8px; padding: 14px; max-height: 48vh; overflow: auto;
+    background: var(--flaeche); border-radius: 14px;
+    white-space: pre-wrap; word-break: break-word;
+    font: .88rem/1.5 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  .export-knoepfe { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 8px; }
+  .export-knoepfe .knopf { padding: 0 8px; }
+  .export-knoepfe .haupt { width: auto; font-size: 1rem; min-height: 52px; }
+
+  /* ---------- Reiterleiste unten ---------- */
+  .tabs {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    padding-bottom: var(--unten);
+    background: rgba(18, 19, 24, .94); border-top: 1px solid var(--rand);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  }
+  .tab {
+    height: var(--tab-hoehe); border: 0; background: none; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    font: inherit; font-size: .8rem; color: var(--text-leise);
+  }
+  .tab svg { width: 26px; height: 26px; }
+  .tab[aria-current="page"] { color: var(--akzent); font-weight: 600; }
+
+  /* ---------- kurze Rückmeldung ("Gespeichert") ---------- */
+  .meldung {
+    position: fixed; left: 50%; z-index: 20;
+    bottom: calc(var(--tab-hoehe) + var(--unten) + 86px);
+    max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 12px;
+    background: var(--text); color: var(--bg); font-weight: 600;
+    opacity: 0; transform: translate(-50%, 16px); pointer-events: none;
+    transition: opacity .25s, transform .25s;
+  }
+  .meldung.sichtbar { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     HTML: der Aufbau. Drei Ansichten, von denen immer nur eine
+     sichtbar ist, plus die Reiterleiste unten.
+     ============================================================ -->
+<main>
+
+  <!-- ===== Ansicht 1: Neuer Eintrag ===== -->
+  <section id="ansicht-neu" class="ansicht">
+    <header class="kopf">
+      <h1>Neuer Eintrag</h1>
+      <button type="button" id="btn-leeren" class="text-knopf">Leeren</button>
+    </header>
+
+    <form id="formular" novalidate autocomplete="off">
+      <div class="feld">
+        <label for="f-zeit">Wann</label>
+        <input type="datetime-local" id="f-zeit" data-feld="zeit">
+      </div>
+
+      <div class="feld">
+        <label for="f-situation">Situation</label>
+        <input type="text" id="f-situation" data-feld="situation" placeholder="Wo, mit wem, was war los?">
+      </div>
+
+      <div class="feld">
+        <label for="f-gedanke">Gedanke (wörtlich)</label>
+        <textarea id="f-gedanke" data-feld="gedanke" rows="2" placeholder="Was ging dir durch den Kopf?"></textarea>
+      </div>
+
+      <fieldset class="feld">
+        <legend>Gefühle</legend>
+        <div id="gefuehle-chips">
+          <p class="gruppe">Angenehm</p>
+          <div class="chips" id="chips-angenehm"></div>
+          <p class="gruppe">Unangenehm</p>
+          <div class="chips" id="chips-unangenehm"></div>
+        </div>
+        <div class="zeile">
+          <input type="text" id="f-eigenes-wort" placeholder="eigenes Wort" enterkeyhint="done" aria-label="Eigenes Gefühlswort">
+          <button type="button" id="btn-eigenes-wort" class="knopf klein">Hinzufügen</button>
+        </div>
+        <div id="staerken" class="staerken"></div>
+      </fieldset>
+
+      <fieldset class="feld">
+        <legend>Körper</legend>
+        <div class="chips" id="chips-koerper"></div>
+        <input type="text" id="f-koerper-text" data-feld="koerperText" class="abstand-oben" placeholder="Sonstiges" aria-label="Körper, Sonstiges">
+      </fieldset>
+
+      <div class="feld">
+        <label for="f-getan">Getan</label>
+        <textarea id="f-getan" data-feld="getan" rows="2" placeholder="Was hast du gemacht?"></textarea>
+      </div>
+
+      <div class="feld">
+        <label class="schalter">
+          <span>Besprechung</span>
+          <input type="checkbox" id="f-besprechung" role="switch">
+        </label>
+        <div id="besprechung-details" class="details" hidden>
+          <p class="gruppe">Punkt angesprochen</p>
+          <div class="segmente" data-besprechung="angesprochen">
+            <button type="button" data-wert="ja">ja</button>
+            <button type="button" data-wert="nein">nein</button>
+          </div>
+          <p class="gruppe">Zeitpunkt</p>
+          <div class="segmente" data-besprechung="zeitpunkt">
+            <button type="button" data-wert="früh">früh</button>
+            <button type="button" data-wert="spät">spät</button>
+          </div>
+          <p class="gruppe">Stellschraube</p>
+          <div class="segmente" data-besprechung="stellschraube">
+            <button type="button" data-wert="1">1</button>
+            <button type="button" data-wert="2">2</button>
+            <button type="button" data-wert="3">3</button>
+            <button type="button" data-wert="keine">keine</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="aktionen-unten">
+        <button type="submit" class="knopf haupt">Speichern</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ===== Ansicht 2: Liste ===== -->
+  <section id="ansicht-liste" class="ansicht" hidden>
+    <header class="kopf">
+      <h1>Einträge</h1>
+      <span id="liste-anzahl" class="leise"></span>
+    </header>
+    <div id="liste" class="karten"></div>
+  </section>
+
+  <!-- ===== Ansicht 3: Export ===== -->
+  <section id="ansicht-export" class="ansicht" hidden>
+    <header class="kopf"><h1>Export</h1></header>
+
+    <div class="feld zwei">
+      <div>
+        <label for="e-von">Von</label>
+        <input type="date" id="e-von">
+      </div>
+      <div>
+        <label for="e-bis">Bis</label>
+        <input type="date" id="e-bis">
+      </div>
+    </div>
+    <div class="feld schnellwahl">
+      <button type="button" class="knopf" data-tage="7">7 Tage</button>
+      <button type="button" class="knopf" data-tage="30">30 Tage</button>
+      <button type="button" class="knopf" data-tage="alle">Alle</button>
+    </div>
+
+    <p id="e-anzahl" class="leise"></p>
+    <pre id="e-vorschau" class="vorschau"></pre>
+
+    <div class="aktionen-unten export-knoepfe">
+      <button type="button" id="btn-kopieren" class="knopf haupt">Kopieren</button>
+      <button type="button" id="btn-teilen" class="knopf">Teilen</button>
+      <button type="button" id="btn-laden" class="knopf">Download</button>
+    </div>
+
+    <p class="hinweis">Deine Einträge liegen nur in diesem Browser auf diesem Gerät.
+      Wer die Browserdaten löscht, löscht auch die Einträge.</p>
+  </section>
+</main>
+
+<nav class="tabs" aria-label="Ansichten">
+  <button type="button" class="tab" data-ansicht="neu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    Neu
+  </button>
+  <button type="button" class="tab" data-ansicht="liste">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
+    Liste
+  </button>
+  <button type="button" class="tab" data-ansicht="export">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>
+    Export
+  </button>
+</nav>
+
+<div id="meldung" class="meldung" role="status" aria-live="polite"></div>
+
+<!-- ============================================================
+     JavaScript: die Logik.
+     ============================================================ -->
+<script>
+"use strict";
+
+// ---------- Feste Listen und Einstellungen ----------
+const GEFUEHLE_ANGENEHM = ["Freude", "Erleichterung", "Vorfreude", "Stolz", "Zuneigung", "Dankbarkeit", "Ruhe", "Neugier"];
+const GEFUEHLE_UNANGENEHM = ["Nervosität", "Anspannung", "Erwartungsangst", "Lampenfieber", "Unsicherheit", "Angst",
+  "Scham", "Schuld", "Enttäuschung", "Traurigkeit", "Ärger", "Frust", "Leere", "Überforderung", "Einsamkeit"];
+const KOERPER = ["Brust", "Bauch", "Hals", "Kiefer", "Schultern", "Hände", "Kopf", "Herzklopfen", "blass",
+  "Schweiß", "Energie hoch", "Energie niedrig", "Unruhe", "Schwere", "leicht", "nichts"];
+
+const STARTWERT = 50;                              // Stärke, wenn ein Gefühl angetippt wird
+const SPEICHER_SCHLUESSEL = "feel.eintraege.v1";   // hier liegen alle Einträge
+const ENTWURF_SCHLUESSEL = "feel.entwurf.v1";      // halb ausgefülltes Formular
+
+// ---------- Kleine Hilfsfunktionen ----------
+const $ = (selektor) => document.querySelector(selektor);
+
+// Verhindert, dass eingegebener Text als HTML interpretiert wird
+function esc(text) {
+  return String(text).replace(/[&<>"']/g, (z) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[z]);
+}
+
+const zweistellig = (n) => String(n).padStart(2, "0");
+
+// Date-Objekt -> "2026-10-19"
+function datumIso(d) {
+  return `${d.getFullYear()}-${zweistellig(d.getMonth() + 1)}-${zweistellig(d.getDate())}`;
+}
+
+// jetzt -> "2026-10-19T21:05" (das Format des Datum/Uhrzeit-Felds)
+function jetztLokal() {
+  const d = new Date();
+  return `${datumIso(d)}T${zweistellig(d.getHours())}:${zweistellig(d.getMinutes())}`;
+}
+
+// "2026-10-19T21:05" -> "19.10.2026, 21:05"
+function zeitText(zeit) {
+  const [datum, uhr] = zeit.split("T");
+  const [j, m, t] = datum.split("-");
+  return `${t}.${m}.${j}, ${uhr}`;
+}
+
+const WOCHENTAGE = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+function wochentag(zeit) {
+  const [j, m, t] = zeit.slice(0, 10).split("-").map(Number);
+  return WOCHENTAGE[new Date(j, m - 1, t).getDay()];
+}
+
+function neueId() {
+  return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+// Zeilenumbrüche im Export durch " / " ersetzen, damit jedes Feld eine Zeile bleibt
+const einzeilig = (text) => text.trim().replace(/\s*\n\s*/g, " / ");
+
+// Ordnet ein Gefühlswort seiner Farbgruppe zu
+function artVon(wort) {
+  if (GEFUEHLE_ANGENEHM.includes(wort)) return "angenehm";
+  if (GEFUEHLE_UNANGENEHM.includes(wort)) return "unangenehm";
+  return "eigen";
+}
+
+let meldungTimer;
+function meldung(text) {
+  const el = $("#meldung");
+  el.textContent = text;
+  el.classList.add("sichtbar");
+  clearTimeout(meldungTimer);
+  meldungTimer = setTimeout(() => el.classList.remove("sichtbar"), 2200);
+}
+
+// ---------- Speicher (localStorage) ----------
+// localStorage speichert nur Text. Darum wird die Liste mit JSON.stringify
+// in Text verwandelt und mit JSON.parse wieder zurück (wie json.dumps/loads in Python).
+function eintraegeLaden() {
+  const roh = localStorage.getItem(SPEICHER_SCHLUESSEL);
+  return roh ? JSON.parse(roh) : [];
+}
+
+let eintraege = eintraegeLaden();
+
+function eintraegeSpeichern(neueListe) {
+  try {
+    localStorage.setItem(SPEICHER_SCHLUESSEL, JSON.stringify(neueListe));
+    eintraege = neueListe;
+    return true;
+  } catch (fehler) {
+    alert("Speichern fehlgeschlagen: " + fehler.message);
+    return false;
+  }
+}
+
+// Bittet den Browser, die Daten nicht automatisch aufzuräumen, wenn der Speicher knapp wird
+async function speicherDauerhaftAnfragen() {
+  try {
+    if (navigator.storage && navigator.storage.persist && !(await navigator.storage.persisted())) {
+      await navigator.storage.persist();
+    }
+  } catch { /* nicht schlimm, wenn es nicht klappt */ }
+}
+
+// ---------- Entwurf: der aktuelle Stand des Formulars ----------
+// Wird bei jeder Eingabe gemerkt. Wenn Android die App im Hintergrund
+// schließt, ist das halb Ausgefüllte beim nächsten Öffnen noch da.
+function leererEntwurf() {
+  return {
+    zeit: jetztLokal(), situation: "", gedanke: "",
+    gefuehle: [],                         // [{wort: "Nervosität", staerke: 40}, ...] in Antipp-Reihenfolge
+    koerper: [], koerperText: "", getan: "",
+    besprechungAktiv: false,
+    besprechung: { angesprochen: null, zeitpunkt: null, stellschraube: null },
+  };
+}
+
+const gemerkterEntwurf = localStorage.getItem(ENTWURF_SCHLUESSEL);
+let entwurf = gemerkterEntwurf ? JSON.parse(gemerkterEntwurf) : leererEntwurf();
+let entwurfBeruehrt = gemerkterEntwurf !== null;   // false = noch nichts eingegeben
+
+function entwurfMerken() {
+  entwurfBeruehrt = true;
+  localStorage.setItem(ENTWURF_SCHLUESSEL, JSON.stringify(entwurf));
+}
+
+function entwurfVerwerfen() {
+  localStorage.removeItem(ENTWURF_SCHLUESSEL);
+  entwurf = leererEntwurf();
+  entwurfBeruehrt = false;
+  formularFuellen();
+}
+
+// Solange noch nichts eingegeben ist, springt die Uhrzeit beim Öffnen auf "jetzt"
+function zeitAuffrischen() {
+  if (entwurfBeruehrt) return;
+  entwurf.zeit = jetztLokal();
+  $("#f-zeit").value = entwurf.zeit;
+}
+
+// ---------- Formular anzeigen ----------
+const formular = $("#formular");
+
+function formularFuellen() {
+  for (const el of formular.querySelectorAll("[data-feld]")) el.value = entwurf[el.dataset.feld];
+  $("#f-besprechung").checked = entwurf.besprechungAktiv;
+  chipsRendern();
+  staerkenRendern();
+  besprechungRendern();
+}
+
+function chipsHtml(woerter, istGewaehlt, art) {
+  return woerter.map((w) =>
+    `<button type="button" class="chip ${art}" data-wort="${esc(w)}" aria-pressed="${istGewaehlt(w)}">${esc(w)}</button>`
+  ).join("");
+}
+
+function chipsRendern() {
+  const gefuehlGewaehlt = (w) => entwurf.gefuehle.some((g) => g.wort === w);
+  $("#chips-angenehm").innerHTML = chipsHtml(GEFUEHLE_ANGENEHM, gefuehlGewaehlt, "angenehm");
+  $("#chips-unangenehm").innerHTML = chipsHtml(GEFUEHLE_UNANGENEHM, gefuehlGewaehlt, "unangenehm");
+  $("#chips-koerper").innerHTML = chipsHtml(KOERPER, (w) => entwurf.koerper.includes(w), "koerper");
+}
+
+// Für jedes gewählte Gefühl ein Schieberegler
+function staerkenRendern() {
+  $("#staerken").innerHTML = entwurf.gefuehle.map((g, i) => `
+    <div class="staerke ${artVon(g.wort)}">
+      <div class="staerke-kopf">
+        <span>${esc(g.wort)}</span>
+        <output id="staerke-wert-${i}">${g.staerke}</output>
+        <button type="button" class="entfernen" data-index="${i}" aria-label="${esc(g.wort)} entfernen">×</button>
+      </div>
+      <input type="range" min="0" max="100" step="5" value="${g.staerke}" data-index="${i}"
+             style="--prozent:${g.staerke}%" aria-label="Stärke ${esc(g.wort)}">
+    </div>`).join("");
+}
+
+function besprechungRendern() {
+  $("#besprechung-details").hidden = !entwurf.besprechungAktiv;
+  for (const gruppe of document.querySelectorAll("[data-besprechung]")) {
+    const wert = entwurf.besprechung[gruppe.dataset.besprechung];
+    for (const knopf of gruppe.querySelectorAll("button")) {
+      knopf.setAttribute("aria-pressed", knopf.dataset.wert === wert);
+    }
+  }
+}
+
+// ---------- Formular: auf Eingaben reagieren ----------
+// Ein "Event-Listener" ist eine Funktion, die der Browser aufruft, wenn etwas passiert
+// (Tippen, Antippen, ...). Statt jedem Feld einen eigenen zu geben, hört einer auf
+// das ganze Formular und schaut nach, welches Feld (data-feld) betroffen war.
+formular.addEventListener("input", (ev) => {
+  const feld = ev.target.dataset.feld;
+  if (feld) {
+    entwurf[feld] = ev.target.value;
+    entwurfMerken();
+  }
+});
+
+// Die Enter-Taste in einzeiligen Feldern würde sonst das Formular abschicken
+formular.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Enter" || ev.target.tagName !== "INPUT") return;
+  ev.preventDefault();
+  if (ev.target.id === "f-eigenes-wort") eigenesWortHinzufuegen();
+});
+
+function gefuehlUmschalten(wort) {
+  const i = entwurf.gefuehle.findIndex((g) => g.wort === wort);
+  if (i >= 0) entwurf.gefuehle.splice(i, 1);
+  else entwurf.gefuehle.push({ wort, staerke: STARTWERT });
+  entwurfMerken();
+  chipsRendern();
+  staerkenRendern();
+}
+
+$("#gefuehle-chips").addEventListener("click", (ev) => {
+  const chip = ev.target.closest(".chip");
+  if (chip) gefuehlUmschalten(chip.dataset.wort);
+});
+
+function eigenesWortHinzufuegen() {
+  const feld = $("#f-eigenes-wort");
+  const wort = feld.value.trim();
+  if (!wort) return;
+  const schonDa = entwurf.gefuehle.some((g) => g.wort.toLowerCase() === wort.toLowerCase());
+  if (!schonDa) gefuehlUmschalten(wort);
+  feld.value = "";
+}
+$("#btn-eigenes-wort").addEventListener("click", eigenesWortHinzufuegen);
+
+// Schieberegler bewegt: Zahl daneben aktualisieren
+$("#staerken").addEventListener("input", (ev) => {
+  if (ev.target.type !== "range") return;
+  const i = Number(ev.target.dataset.index);
+  const wert = Number(ev.target.value);
+  entwurf.gefuehle[i].staerke = wert;
+  ev.target.style.setProperty("--prozent", wert + "%");
+  $(`#staerke-wert-${i}`).textContent = wert;
+  entwurfMerken();
+});
+
+$("#staerken").addEventListener("click", (ev) => {
+  const knopf = ev.target.closest(".entfernen");
+  if (knopf) gefuehlUmschalten(entwurf.gefuehle[Number(knopf.dataset.index)].wort);
+});
+
+// "nichts" schließt die anderen Körper-Chips aus und umgekehrt
+$("#chips-koerper").addEventListener("click", (ev) => {
+  const chip = ev.target.closest(".chip");
+  if (!chip) return;
+  const wort = chip.dataset.wort;
+  const liste = entwurf.koerper;
+  if (liste.includes(wort)) entwurf.koerper = liste.filter((w) => w !== wort);
+  else if (wort === "nichts") entwurf.koerper = ["nichts"];
+  else entwurf.koerper = [...liste.filter((w) => w !== "nichts"), wort];
+  entwurfMerken();
+  chipsRendern();
+});
+
+$("#f-besprechung").addEventListener("change", (ev) => {
+  entwurf.besprechungAktiv = ev.target.checked;
+  entwurfMerken();
+  besprechungRendern();
+});
+
+// Segment-Knopf: antippen wählt aus, nochmal antippen hebt die Auswahl auf
+$("#besprechung-details").addEventListener("click", (ev) => {
+  const knopf = ev.target.closest("button");
+  if (!knopf) return;
+  const feld = knopf.parentElement.dataset.besprechung;
+  const wert = knopf.dataset.wert;
+  entwurf.besprechung[feld] = entwurf.besprechung[feld] === wert ? null : wert;
+  entwurfMerken();
+  besprechungRendern();
+});
+
+$("#btn-leeren").addEventListener("click", () => {
+  if (entwurfBeruehrt && !confirm("Alle Eingaben in diesem Formular verwerfen?")) return;
+  entwurfVerwerfen();
+});
+
+// ---------- Speichern ----------
+formular.addEventListener("submit", (ev) => {
+  ev.preventDefault();                    // sonst würde der Browser die Seite neu laden
+  const e = entwurf;
+  const hatInhalt = e.situation.trim() || e.gedanke.trim() || e.gefuehle.length || e.koerper.length
+    || e.koerperText.trim() || e.getan.trim() || e.besprechungAktiv;
+  if (!hatInhalt) return meldung("Bitte mindestens ein Feld ausfüllen.");
+  if (!e.zeit) return meldung("Bitte Datum und Uhrzeit angeben.");
+
+  const eintrag = {
+    id: neueId(),
+    zeit: e.zeit,
+    situation: e.situation.trim(),
+    gedanke: e.gedanke.trim(),
+    gefuehle: e.gefuehle.map((g) => ({ wort: g.wort, staerke: g.staerke })),
+    koerper: [...e.koerper],
+    koerperText: e.koerperText.trim(),
+    getan: e.getan.trim(),
+    besprechung: e.besprechungAktiv ? { ...e.besprechung } : null,
+    erstellt: new Date().toISOString(),
+  };
+  if (!eintraegeSpeichern([...eintraege, eintrag])) return;
+
+  speicherDauerhaftAnfragen();
+  entwurfVerwerfen();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  meldung("Gespeichert ✓");
+});
+
+// ---------- Texte, die Liste und Export gemeinsam nutzen ----------
+const koerperZusammen = (e) => [...e.koerper, e.koerperText].filter(Boolean).join(", ");
+const besprechungText = (b) =>
+  `angesprochen ${b.angesprochen ?? "–"} · ${b.zeitpunkt ?? "–"} · Stellschraube ${b.stellschraube ?? "–"}`;
+const nachZeit = (a, b) => a.zeit.localeCompare(b.zeit);
+
+// ---------- Liste ----------
+function karteHtml(e) {
+  const zeile = (titel, wert) =>
+    wert ? `<div class="karte-zeile"><span>${titel}:</span> ${esc(wert)}</div>` : "";
+  const pills = e.gefuehle.map((g) =>
+    `<span class="pill ${artVon(g.wort)}">${esc(g.wort)} <b>${g.staerke}</b></span>`).join("");
+  return `
+    <article class="karte">
+      <div class="karte-zeit">${wochentag(e.zeit)}, ${esc(zeitText(e.zeit))}</div>
+      ${e.situation ? `<div class="karte-situation">${esc(e.situation)}</div>` : ""}
+      ${e.gedanke ? `<blockquote>„${esc(e.gedanke)}“</blockquote>` : ""}
+      ${pills ? `<div class="pills">${pills}</div>` : ""}
+      ${zeile("Körper", koerperZusammen(e))}
+      ${zeile("Getan", e.getan)}
+      ${e.besprechung ? zeile("Besprechung", besprechungText(e.besprechung)) : ""}
+    </article>`;
+}
+
+function listeRendern() {
+  const sortiert = [...eintraege].sort(nachZeit).reverse();   // neueste oben
+  $("#liste-anzahl").textContent = sortiert.length === 1 ? "1 Eintrag" : `${sortiert.length} Einträge`;
+  $("#liste").innerHTML = sortiert.length
+    ? sortiert.map(karteHtml).join("")
+    : `<p class="leer">Noch keine Einträge.<br>Unter „Neu“ legst du den ersten an.</p>`;
+}
+
+// ---------- Export ----------
+function eintragAlsText(e) {
+  const oderStrich = (text) => einzeilig(text) || "–";
+  const zeilen = [
+    `## ${zeitText(e.zeit)}`,
+    `Situation: ${oderStrich(e.situation)}`,
+    `Gedanke: ${e.gedanke ? `„${einzeilig(e.gedanke)}“` : "–"}`,
+    `Gefühl: ${e.gefuehle.map((g) => `${g.wort} ${g.staerke}`).join(", ") || "–"}`,
+    `Körper: ${oderStrich(koerperZusammen(e))}`,
+    `Getan: ${oderStrich(e.getan)}`,
+  ];
+  if (e.besprechung) zeilen.push(`Besprechung: ${besprechungText(e.besprechung)}`);
+  return zeilen.join("\n");
+}
+
+// Einträge im gewählten Zeitraum, älteste zuerst
+function exportEintraege() {
+  const von = $("#e-von").value || "0000-01-01";
+  const bis = $("#e-bis").value || "9999-12-31";
+  return eintraege
+    .filter((e) => e.zeit.slice(0, 10) >= von && e.zeit.slice(0, 10) <= bis)
+    .sort(nachZeit);
+}
+
+function exportText() {
+  const liste = exportEintraege();
+  return liste.length ? liste.map(eintragAlsText).join("\n\n") + "\n" : "";
+}
+
+function exportDateiname() {
+  return `feel_${$("#e-von").value || "anfang"}_bis_${$("#e-bis").value || "heute"}.md`;
+}
+
+function exportZeitraumSetzen(tage) {
+  const heute = datumIso(new Date());
+  if (tage === "alle") {
+    const zeiten = eintraege.map((e) => e.zeit.slice(0, 10)).sort();
+    $("#e-von").value = zeiten[0] || heute;
+    $("#e-bis").value = zeiten.length && zeiten[zeiten.length - 1] > heute ? zeiten[zeiten.length - 1] : heute;
+  } else {
+    const von = new Date();
+    von.setDate(von.getDate() - (tage - 1));   // "7 Tage" = heute und die 6 Tage davor
+    $("#e-von").value = datumIso(von);
+    $("#e-bis").value = heute;
+  }
+  exportAktualisieren();
+}
+
+function exportAktualisieren() {
+  const anzahl = exportEintraege().length;
+  $("#e-anzahl").textContent = anzahl === 1 ? "1 Eintrag im Zeitraum" : `${anzahl} Einträge im Zeitraum`;
+  $("#e-vorschau").textContent = exportText() || "Keine Einträge im gewählten Zeitraum.";
+}
+
+$("#e-von").addEventListener("change", exportAktualisieren);
+$("#e-bis").addEventListener("change", exportAktualisieren);
+document.querySelector(".schnellwahl").addEventListener("click", (ev) => {
+  const knopf = ev.target.closest("[data-tage]");
+  if (knopf) exportZeitraumSetzen(knopf.dataset.tage === "alle" ? "alle" : Number(knopf.dataset.tage));
+});
+
+$("#btn-kopieren").addEventListener("click", async () => {
+  const text = exportText();
+  if (!text) return meldung("Keine Einträge im Zeitraum.");
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    // Ersatzweg für ältere Browser
+    const feld = document.createElement("textarea");
+    feld.value = text;
+    document.body.append(feld);
+    feld.select();
+    document.execCommand("copy");
+    feld.remove();
+  }
+  meldung("Kopiert ✓");
+});
+
+function herunterladen(text, name) {
+  const url = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+$("#btn-laden").addEventListener("click", () => {
+  const text = exportText();
+  if (!text) return meldung("Keine Einträge im Zeitraum.");
+  herunterladen(text, exportDateiname());
+});
+
+// Teilen-Menü des Handys (Web Share API). Chrome auf Android lässt .md-Dateien
+// eventuell nicht zu – dann wird dieselbe Datei als .txt geteilt.
+$("#btn-teilen").addEventListener("click", async () => {
+  const text = exportText();
+  if (!text) return meldung("Keine Einträge im Zeitraum.");
+  const name = exportDateiname();
+  const varianten = [
+    new File([text], name, { type: "text/markdown" }),
+    new File([text], name.replace(/\.md$/, ".txt"), { type: "text/plain" }),
+  ];
+  const datei = varianten.find((d) => navigator.canShare && navigator.canShare({ files: [d] }));
+  try {
+    if (datei) await navigator.share({ files: [datei], title: "Feel-Export" });
+    else if (navigator.share) await navigator.share({ title: "Feel-Export", text });
+    else {
+      herunterladen(text, name);
+      meldung("Teilen nicht verfügbar – Datei heruntergeladen.");
+    }
+  } catch (fehler) {
+    if (fehler.name !== "AbortError") meldung("Teilen hat nicht geklappt.");  // AbortError = selbst abgebrochen
+  }
+});
+
+// ---------- Ansichten umschalten ----------
+function zeigeAnsicht(name) {
+  for (const s of document.querySelectorAll(".ansicht")) s.hidden = s.id !== `ansicht-${name}`;
+  for (const t of document.querySelectorAll(".tab")) {
+    t.setAttribute("aria-current", t.dataset.ansicht === name ? "page" : "false");
+  }
+  if (name === "neu") zeitAuffrischen();
+  if (name === "liste") listeRendern();
+  if (name === "export") {
+    if (!$("#e-von").value) exportZeitraumSetzen(7);
+    else exportAktualisieren();
+  }
+  window.scrollTo(0, 0);
+}
+
+document.querySelector(".tabs").addEventListener("click", (ev) => {
+  const tab = ev.target.closest(".tab");
+  if (tab) zeigeAnsicht(tab.dataset.ansicht);
+});
+
+// App kommt aus dem Hintergrund zurück
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") zeitAuffrischen();
+});
+
+// ---------- Start ----------
+formularFuellen();
+zeigeAnsicht("neu");
+if (entwurfBeruehrt) meldung("Entwurf wiederhergestellt");
+
+// Service Worker anmelden (macht die App offline-fähig, siehe sw.js)
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
+}
+</script>
+</body>
+</html>
