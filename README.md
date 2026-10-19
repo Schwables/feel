@@ -57,8 +57,12 @@ Alle Einträge bleiben im Browser auf dem Handy. Es gibt keinen Server, kein Kon
 
 Mit Git: Änderungen committen und `git push origin main`.
 Ohne Git: Im Repo **Add file** → **Upload files** → die geänderten Dateien hineinziehen (gleiche Namen überschreiben) → **Commit changes**.
-Nach 1–2 Minuten ist die neue Version online. Auf dem Handy erscheint sie beim **zweiten** Öffnen der App:
-Beim ersten Öffnen lädt sie im Hintergrund nach. Deine Einträge bleiben dabei erhalten.
+Nach 1–2 Minuten ist die neue Version online. Beim nächsten Öffnen startet Feel noch mit der alten Version,
+lädt die neue im Hintergrund und zeigt unten **„Neue Version geladen – tippen zum Aktualisieren“**.
+Deine Einträge bleiben dabei erhalten.
+
+Welche Version läuft, steht ganz unten unter **Export** („Feel · Version …“). Bei jeder Änderung
+`APP_VERSION` in `index.html` hochzählen.
 
 ## Wo Daten verloren gehen können (Android / Chrome)
 

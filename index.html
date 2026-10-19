@@ -298,6 +298,15 @@
     transition: opacity .25s, transform .25s;
   }
   .meldung.sichtbar { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- Hinweis auf neue Version ---------- */
+  .update-hinweis {
+    position: fixed; left: 16px; right: 16px; z-index: 30;
+    bottom: calc(var(--tab-hoehe) + var(--unten) + 12px);
+    min-height: 56px; padding: 0 16px; border: 0; border-radius: 14px; cursor: pointer;
+    font: inherit; font-weight: 600; background: var(--akzent); color: var(--akzent-text);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, .45);
+  }
 </style>
 </head>
 <body>
@@ -479,6 +488,8 @@
         leg sie z. B. in Google Drive ab. Beim Laden werden nur fehlende Einträge und Checks
         hinzugefügt, Vorhandenes bleibt unverändert.</p>
     </section>
+
+    <p id="app-version" class="hinweis"></p>
   </section>
 </main>
 
@@ -502,6 +513,7 @@
 </nav>
 
 <div id="meldung" class="meldung" role="status" aria-live="polite"></div>
+<button type="button" id="update-hinweis" class="update-hinweis" hidden>Neue Version geladen – tippen zum Aktualisieren</button>
 
 <!-- ============================================================
      JavaScript: die Logik.
@@ -522,7 +534,11 @@ const CHECKS_SCHLUESSEL = "feel.checks.v1";        // hier liegen alle Kurz-Chec
 const ENTWURF_SCHLUESSEL = "feel.entwurf.v1";      // halb ausgefülltes Formular
 const VERSION_SCHLUESSEL = "feel.version";         // Version der gespeicherten Datenstruktur
 const BACKUP_SCHLUESSEL = "feel.letztesBackup";    // wann zuletzt ein Backup gespeichert wurde
-const AKTUELLE_VERSION = 2;
+const DATEN_VERSION = 2;                           // Version der Datenstruktur (für Migration und Backup)
+
+// Version der App selbst – bei jeder Änderung hochzählen. Sie steht unten unter "Export",
+// so siehst du, welche Version auf dem Handy läuft.
+const APP_VERSION = "4 · 19.10.2026";
 
 // ---------- Kleine Hilfsfunktionen ----------
 const $ = (selektor) => document.querySelector(selektor);
@@ -596,7 +612,7 @@ function meldung(text) {
 
 // ---------- Migration ----------
 // Läuft bei jedem Start, bevor Daten gelesen werden. Sie bringt ältere gespeicherte
-// Daten auf die aktuelle Struktur (AKTUELLE_VERSION).
+// Daten auf die aktuelle Struktur (DATEN_VERSION).
 //   Version 1: nur Einträge.
 //   Version 2: zusätzlich Kurz-Checks unter eigenem Schlüssel; Einträge können
 //              optional checkId (Verweis auf einen Check) und geaendert haben.
@@ -605,7 +621,7 @@ function meldung(text) {
 // Spätere Umbauten kommen als weiterer Schritt dazu, z. B.: if (version < 3) { ... }
 function migrieren() {
   const version = Number(localStorage.getItem(VERSION_SCHLUESSEL) || 1);
-  if (version >= AKTUELLE_VERSION) return;
+  if (version >= DATEN_VERSION) return;
 
   // Sicherheitskopie des alten Stands, bevor irgendetwas geändert wird
   const alt = localStorage.getItem(SPEICHER_SCHLUESSEL);
@@ -613,7 +629,7 @@ function migrieren() {
     if (alt) localStorage.setItem(`feel.sicherung.v${version}`, alt);
   } catch { /* Speicher voll: 1 → 2 ändert nichts an den Einträgen, also weiter */ }
 
-  localStorage.setItem(VERSION_SCHLUESSEL, String(AKTUELLE_VERSION));
+  localStorage.setItem(VERSION_SCHLUESSEL, String(DATEN_VERSION));
 }
 migrieren();
 
@@ -1300,7 +1316,10 @@ function backupStandRendern() {
 }
 
 $("#btn-backup").addEventListener("click", () => {
-  const backup = { app: "feel", format: AKTUELLE_VERSION, exportiert: new Date().toISOString(), eintraege, checks };
+  const backup = {
+    app: "feel", format: DATEN_VERSION, appVersion: APP_VERSION,
+    exportiert: new Date().toISOString(), eintraege, checks,
+  };
   herunterladen(JSON.stringify(backup, null, 2), `feel-backup_${heuteIso()}.json`, "application/json");
   localStorage.setItem(BACKUP_SCHLUESSEL, new Date().toISOString());
   backupStandRendern();
@@ -1318,7 +1337,7 @@ function backupLesen(inhalt) {
   if (Array.isArray(inhalt)) {
     roheEintraege = inhalt;
   } else if (inhalt && Array.isArray(inhalt.eintraege)) {
-    if (Number(inhalt.format) > AKTUELLE_VERSION) {
+    if (Number(inhalt.format) > DATEN_VERSION) {
       return { fehler: "Dieses Backup stammt aus einer neueren Version von Feel. Bitte zuerst die App aktualisieren (zweimal öffnen)." };
     }
     roheEintraege = inhalt.eintraege;
@@ -1444,9 +1463,19 @@ let entwurfHinweis = entwurfBeruehrt;   // beim ersten Öffnen von "Eintrag" Bes
 formularFuellen();
 zeigeAnsicht("check");
 
+$("#app-version").textContent = `Feel · Version ${APP_VERSION}`;
+
 // Service Worker anmelden (macht die App offline-fähig, siehe sw.js)
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
+
+  // Der Service Worker meldet sich, wenn er im Hintergrund eine neue Version
+  // der App geladen hat. Ein Tippen auf den Hinweis lädt die Seite neu.
+  navigator.serviceWorker.addEventListener("message", (ev) => {
+    if (ev.data === "neue-version") $("#update-hinweis").hidden = false;
+  });
+  navigator.serviceWorker.startMessages();
+  $("#update-hinweis").addEventListener("click", () => location.reload());
 }
 </script>
 </body>
