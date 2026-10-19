@@ -3,6 +3,26 @@
 Kleine Web-App (PWA) zum schnellen Festhalten von Situation, Gedanke, Gefühlen und Körperempfindungen.
 Alle Einträge bleiben im Browser auf dem Handy. Es gibt keinen Server, kein Konto und kein Tracking.
 
+## So wird Feel benutzt
+
+- **Check** (Startbildschirm): tagsüber in wenigen Sekunden festhalten, ob ein Moment angenehm (+),
+  neutral (0) oder unangenehm (−) war, optional mit Stichwort. Antippen eines Checks: bearbeiten oder löschen.
+- **Eintrag**: der vollständige Eintrag. Oben stehen die Checks des Tages aus „Wann“. Ein angetippter Check
+  übernimmt Uhrzeit und (falls leer) Situation und wird als „ausgewählt“ markiert.
+- **Liste**: alles nach Tagen. Einen Eintrag oder Check antippen, um ihn zu bearbeiten oder zu löschen.
+- **Export**: Text für den Wochen-Chat (Checks pro Tag vor den Einträgen) und das **Backup**.
+
+## Gespeicherte Daten
+
+| Schlüssel im localStorage | Inhalt |
+|---|---|
+| `feel.eintraege.v1` | alle vollständigen Einträge |
+| `feel.checks.v1` | alle Kurz-Checks |
+| `feel.entwurf.v1` | das gerade halb ausgefüllte Eintrag-Formular |
+| `feel.version` | Version der Datenstruktur (aktuell 2), für die Migration beim Start |
+| `feel.sicherung.v1` | Sicherheitskopie der Einträge von vor der Migration auf Version 2 |
+| `feel.letztesBackup` | Zeitpunkt des letzten JSON-Backups |
+
 ## Dateien
 
 | Datei | Zweck |
@@ -35,13 +55,14 @@ Alle Einträge bleiben im Browser auf dem Handy. Es gibt keinen Server, kein Kon
 
 ## Eine neue Version hochladen
 
-Im Repo **Add file** → **Upload files** → die geänderten Dateien hineinziehen (gleiche Namen überschreiben) → **Commit changes**.
+Mit Git: Änderungen committen und `git push origin main`.
+Ohne Git: Im Repo **Add file** → **Upload files** → die geänderten Dateien hineinziehen (gleiche Namen überschreiben) → **Commit changes**.
 Nach 1–2 Minuten ist die neue Version online. Auf dem Handy erscheint sie beim **zweiten** Öffnen der App:
 Beim ersten Öffnen lädt sie im Hintergrund nach. Deine Einträge bleiben dabei erhalten.
 
 ## Wo Daten verloren gehen können (Android / Chrome)
 
-Die Einträge liegen im **localStorage** von Chrome für die Adresse `DEINNAME.github.io`.
+Einträge und Checks liegen im **localStorage** von Chrome für die Adresse `DEINNAME.github.io`.
 Sie gehen verloren, wenn …
 
 - in Chrome **Browserdaten löschen** mit „Cookies und Websitedaten“ ausgeführt wird;
@@ -54,5 +75,8 @@ Sie gehen verloren, wenn …
 
 Gut zu wissen: Auf Android teilen sich die installierte App und der normale Chrome-Tab mit derselben Adresse denselben Speicher.
 
-**Schutz:** Ab Version 2 gibt es ein JSON-Backup. Dafür regelmäßig eine Sicherung machen und z. B. in Google Drive ablegen.
-Bis dahin ist der wöchentliche Export deine Sicherung, zumindest als Text.
+**Schutz:** Unter **Export → Backup → Speichern** entsteht eine JSON-Datei mit allen Einträgen und Checks
+(landet im Download-Ordner). Regelmäßig speichern und z. B. in Google Drive ablegen; die App zeigt an,
+wann das letzte Backup war, und färbt den Hinweis rot, wenn es länger als 14 Tage her ist.
+**Backup → Laden** fügt nur hinzu, was fehlt – vorhandene Einträge und Checks werden nie überschrieben.
+Auch ältere Backups ohne Checks lassen sich laden.

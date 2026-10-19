@@ -246,6 +246,17 @@
     font: inherit; font-size: .92rem; cursor: pointer;
   }
   .check-chip .check-wert { width: 26px; height: 26px; }
+  .check-zeile[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--akzent) 16%, var(--flaeche));
+    box-shadow: inset 0 0 0 2px var(--akzent);
+  }
+  .anker-marke { color: var(--akzent); font-size: .85rem; font-weight: 600; white-space: nowrap; }
+  .karte[data-eintrag-id] { cursor: pointer; }
+
+  /* ---------- Backup ---------- */
+  .backup { margin-top: 36px; }
+  .backup .knopf { width: 100%; }
+  .warnung { color: var(--unangenehm); }
 
   /* ---------- Export ---------- */
   .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -326,14 +337,20 @@
     <div id="checks-heute" class="check-liste"></div>
   </section>
 
-  <!-- ===== Ansicht 1: Neuer Eintrag ===== -->
+  <!-- ===== Ansicht 1: Eintrag (neu oder bearbeiten) ===== -->
   <section id="ansicht-neu" class="ansicht" hidden>
     <header class="kopf">
-      <h1>Neuer Eintrag</h1>
+      <h1 id="eintrag-titel">Neuer Eintrag</h1>
       <button type="button" id="btn-leeren" class="text-knopf">Leeren</button>
     </header>
 
     <form id="formular" novalidate autocomplete="off">
+      <!-- Abend-Ansicht: Kurz-Checks des Tages aus "Wann" -->
+      <div id="anker" class="feld" hidden>
+        <p class="gruppe">Checks an diesem Tag</p>
+        <div id="anker-checks" class="check-liste"></div>
+      </div>
+
       <div class="feld">
         <label for="f-zeit">Wann</label>
         <input type="datetime-local" id="f-zeit" data-feld="zeit">
@@ -401,6 +418,10 @@
         </div>
       </div>
 
+      <div class="feld" id="eintrag-loeschen-feld" hidden>
+        <button type="button" id="btn-eintrag-loeschen" class="text-knopf gefahr">Eintrag löschen</button>
+      </div>
+
       <div class="aktionen-unten">
         <button type="submit" class="knopf haupt">Speichern</button>
       </div>
@@ -445,8 +466,19 @@
       <button type="button" id="btn-laden" class="knopf">Download</button>
     </div>
 
-    <p class="hinweis">Deine Einträge liegen nur in diesem Browser auf diesem Gerät.
-      Wer die Browserdaten löscht, löscht auch die Einträge.</p>
+    <section class="backup">
+      <h2 class="abschnitt">Backup</h2>
+      <p id="backup-stand" class="leise"></p>
+      <div class="zwei">
+        <button type="button" id="btn-backup" class="knopf">Speichern</button>
+        <button type="button" id="btn-import" class="knopf">Laden</button>
+      </div>
+      <input type="file" id="import-datei" hidden>
+      <p class="hinweis">Deine Einträge und Checks liegen nur in diesem Browser auf diesem Gerät.
+        Wer die Browserdaten löscht, löscht auch sie. Das Backup ist eine JSON-Datei mit allem –
+        leg sie z. B. in Google Drive ab. Beim Laden werden nur fehlende Einträge und Checks
+        hinzugefügt, Vorhandenes bleibt unverändert.</p>
+    </section>
   </section>
 </main>
 
@@ -489,6 +521,7 @@ const SPEICHER_SCHLUESSEL = "feel.eintraege.v1";   // hier liegen alle Einträge
 const CHECKS_SCHLUESSEL = "feel.checks.v1";        // hier liegen alle Kurz-Checks
 const ENTWURF_SCHLUESSEL = "feel.entwurf.v1";      // halb ausgefülltes Formular
 const VERSION_SCHLUESSEL = "feel.version";         // Version der gespeicherten Datenstruktur
+const BACKUP_SCHLUESSEL = "feel.letztesBackup";    // wann zuletzt ein Backup gespeichert wurde
 const AKTUELLE_VERSION = 2;
 
 // ---------- Kleine Hilfsfunktionen ----------
@@ -565,8 +598,10 @@ function meldung(text) {
 // Läuft bei jedem Start, bevor Daten gelesen werden. Sie bringt ältere gespeicherte
 // Daten auf die aktuelle Struktur (AKTUELLE_VERSION).
 //   Version 1: nur Einträge.
-//   Version 2: zusätzlich Kurz-Checks unter eigenem Schlüssel. Alte Einträge
-//              bleiben unverändert gültig, darum gibt es für 1 → 2 nichts umzubauen.
+//   Version 2: zusätzlich Kurz-Checks unter eigenem Schlüssel; Einträge können
+//              optional checkId (Verweis auf einen Check) und geaendert haben.
+//              Alte Einträge ohne diese Felder bleiben gültig, darum gibt es
+//              für 1 → 2 nichts umzubauen.
 // Spätere Umbauten kommen als weiterer Schritt dazu, z. B.: if (version < 3) { ... }
 function migrieren() {
   const version = Number(localStorage.getItem(VERSION_SCHLUESSEL) || 1);
@@ -634,11 +669,14 @@ function leererEntwurf() {
     koerper: [], koerperText: "", getan: "",
     besprechungAktiv: false,
     besprechung: { angesprochen: null, zeitpunkt: null, stellschraube: null },
+    checkId: null,        // Kurz-Check, aus dem dieser Eintrag entsteht (Abend-Ansicht)
+    bearbeitetId: null,   // null = neuer Eintrag, sonst die id des bearbeiteten Eintrags
   };
 }
 
+// Ein älterer gemerkter Entwurf kennt die neuen Felder noch nicht: mit Standardwerten auffüllen
 const gemerkterEntwurf = localStorage.getItem(ENTWURF_SCHLUESSEL);
-let entwurf = gemerkterEntwurf ? JSON.parse(gemerkterEntwurf) : leererEntwurf();
+let entwurf = gemerkterEntwurf ? { ...leererEntwurf(), ...JSON.parse(gemerkterEntwurf) } : leererEntwurf();
 let entwurfBeruehrt = gemerkterEntwurf !== null;   // false = noch nichts eingegeben
 
 function entwurfMerken() {
@@ -658,6 +696,7 @@ function zeitAuffrischen() {
   if (entwurfBeruehrt) return;
   entwurf.zeit = jetztLokal();
   $("#f-zeit").value = entwurf.zeit;
+  ankerChecksRendern();
 }
 
 // ---------- Formular anzeigen ----------
@@ -666,9 +705,26 @@ const formular = $("#formular");
 function formularFuellen() {
   for (const el of formular.querySelectorAll("[data-feld]")) el.value = entwurf[el.dataset.feld];
   $("#f-besprechung").checked = entwurf.besprechungAktiv;
+  modusRendern();
+  ankerChecksRendern();
   chipsRendern();
   staerkenRendern();
   besprechungRendern();
+}
+
+// Überschrift und Knöpfe je nachdem, ob ein neuer Eintrag entsteht oder ein alter bearbeitet wird
+function modusRendern() {
+  const bearbeiten = Boolean(entwurf.bearbeitetId);
+  $("#eintrag-titel").textContent = bearbeiten ? "Eintrag bearbeiten" : "Neuer Eintrag";
+  $("#btn-leeren").textContent = bearbeiten ? "Abbrechen" : "Leeren";
+  $("#eintrag-loeschen-feld").hidden = !bearbeiten;
+}
+
+// Abend-Ansicht: die Checks des Tages, der im Feld "Wann" steht
+function ankerChecksRendern() {
+  const liste = entwurf.zeit ? checksAmTag(entwurf.zeit.slice(0, 10)) : [];
+  $("#anker").hidden = liste.length === 0;
+  $("#anker-checks").innerHTML = liste.map((c) => checkZeileHtml(c, c.id === entwurf.checkId)).join("");
 }
 
 function chipsHtml(woerter, istGewaehlt, art) {
@@ -717,7 +773,25 @@ formular.addEventListener("input", (ev) => {
   if (feld) {
     entwurf[feld] = ev.target.value;
     entwurfMerken();
+    if (feld === "zeit") ankerChecksRendern();   // anderer Tag -> andere Checks
   }
+});
+
+// Check in der Abend-Ansicht angetippt: Uhrzeit übernehmen, Situation nur, wenn sie noch leer ist.
+// Nochmal antippen hebt die Auswahl wieder auf.
+$("#anker-checks").addEventListener("click", (ev) => {
+  const zeile = ev.target.closest("[data-check-id]");
+  if (!zeile) return;
+  const check = checks.find((c) => c.id === zeile.dataset.checkId);
+  if (entwurf.checkId === check.id) {
+    entwurf.checkId = null;
+  } else {
+    entwurf.checkId = check.id;
+    entwurf.zeit = check.zeit;
+    if (!entwurf.situation.trim()) entwurf.situation = check.stichwort;
+  }
+  entwurfMerken();
+  formularFuellen();
 });
 
 // Die Enter-Taste in einzeiligen Feldern würde sonst das Formular abschicken
@@ -797,9 +871,48 @@ $("#besprechung-details").addEventListener("click", (ev) => {
   besprechungRendern();
 });
 
+// "Leeren" bei einem neuen Eintrag, "Abbrechen" beim Bearbeiten
 $("#btn-leeren").addEventListener("click", () => {
+  if (entwurf.bearbeitetId) {
+    if (!confirm("Bearbeiten abbrechen? Deine Änderungen gehen verloren.")) return;
+    entwurfVerwerfen();
+    zeigeAnsicht("liste");
+    return;
+  }
   if (entwurfBeruehrt && !confirm("Alle Eingaben in diesem Formular verwerfen?")) return;
   entwurfVerwerfen();
+});
+
+// Vorhandenen Eintrag ins Formular laden. Die id steht im Entwurf (bearbeitetId),
+// damit auch ein halb fertiges Bearbeiten den Neustart der App übersteht.
+function eintragBearbeiten(id) {
+  const e = eintraege.find((x) => x.id === id);
+  if (!e) return;
+  if (entwurf.bearbeitetId !== id) {
+    if (entwurfBeruehrt && !confirm("Dein angefangener Eintrag wird dabei verworfen. Weiter?")) return;
+    entwurf = {
+      ...leererEntwurf(),
+      zeit: e.zeit, situation: e.situation, gedanke: e.gedanke,
+      gefuehle: e.gefuehle.map((g) => ({ ...g })),
+      koerper: [...e.koerper], koerperText: e.koerperText, getan: e.getan,
+      besprechungAktiv: Boolean(e.besprechung),
+      besprechung: e.besprechung ? { ...e.besprechung } : leererEntwurf().besprechung,
+      checkId: e.checkId ?? null,
+      bearbeitetId: e.id,
+    };
+    entwurfMerken();
+    formularFuellen();
+  }
+  entwurfHinweis = false;
+  zeigeAnsicht("neu");
+}
+
+$("#btn-eintrag-loeschen").addEventListener("click", () => {
+  if (!confirm("Diesen Eintrag endgültig löschen?")) return;
+  if (!eintraegeSpeichern(eintraege.filter((x) => x.id !== entwurf.bearbeitetId))) return;
+  entwurfVerwerfen();
+  zeigeAnsicht("liste");
+  meldung("Eintrag gelöscht");
 });
 
 // ---------- Speichern ----------
@@ -811,8 +924,7 @@ formular.addEventListener("submit", (ev) => {
   if (!hatInhalt) return meldung("Bitte mindestens ein Feld ausfüllen.");
   if (!e.zeit) return meldung("Bitte Datum und Uhrzeit angeben.");
 
-  const eintrag = {
-    id: neueId(),
+  const daten = {
     zeit: e.zeit,
     situation: e.situation.trim(),
     gedanke: e.gedanke.trim(),
@@ -821,14 +933,26 @@ formular.addEventListener("submit", (ev) => {
     koerperText: e.koerperText.trim(),
     getan: e.getan.trim(),
     besprechung: e.besprechungAktiv ? { ...e.besprechung } : null,
-    erstellt: new Date().toISOString(),
+    checkId: e.checkId,
   };
-  if (!eintraegeSpeichern([...eintraege, eintrag])) return;
+  const jetzt = new Date().toISOString();
+  // Bearbeiten: vorhandenen Eintrag ersetzen. Falls er inzwischen gelöscht wurde,
+  // wird er als neuer Eintrag gespeichert, damit nichts verloren geht.
+  const bearbeiten = eintraege.some((x) => x.id === e.bearbeitetId);
+  const neueListe = bearbeiten
+    ? eintraege.map((x) => (x.id === e.bearbeitetId ? { ...x, ...daten, geaendert: jetzt } : x))
+    : [...eintraege, { id: neueId(), ...daten, erstellt: jetzt }];
+  if (!eintraegeSpeichern(neueListe)) return;
 
   speicherDauerhaftAnfragen();
   entwurfVerwerfen();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-  meldung("Gespeichert ✓");
+  if (bearbeiten) {
+    zeigeAnsicht("liste");
+    meldung("Änderung gespeichert ✓");
+  } else {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    meldung("Gespeichert ✓");
+  }
 });
 
 // ---------- Texte, die Liste und Export gemeinsam nutzen ----------
@@ -847,6 +971,9 @@ let checkWert = null;           // gewählter Wert im offenen Check-Formular
 let checkBearbeitetId = null;   // null = neuer Check, sonst die id des bearbeiteten Checks
 
 const checksAmTag = (datum) => checks.filter((c) => c.zeit.startsWith(datum)).sort(nachZeit);
+
+// Ein Check gilt als "ausgewählt", sobald ein gespeicherter Eintrag auf ihn verweist
+const istAusgewaehlt = (c) => eintraege.some((e) => e.checkId === c.id);
 
 function wertKnoepfeRendern() {
   for (const knopf of document.querySelectorAll(".wertknopf")) {
@@ -882,12 +1009,15 @@ function checkBearbeiten(id) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function checkZeileHtml(c) {
+// gedrueckt: true/false in der Abend-Ansicht (antippbar zum Auswählen), sonst weglassen
+function checkZeileHtml(c, gedrueckt) {
+  const druck = gedrueckt === undefined ? "" : `aria-pressed="${gedrueckt}"`;
   return `
-    <button type="button" class="check-zeile" data-check-id="${esc(c.id)}">
+    <button type="button" class="check-zeile" data-check-id="${esc(c.id)}" ${druck}>
       <span class="check-uhr">${uhrzeit(c.zeit)}</span>
       <span class="check-wert ${WERT_ART[c.wert]}">${WERT_ZEICHEN[c.wert]}</span>
       <span class="check-wort ${c.stichwort ? "" : "ohne"}">${c.stichwort ? esc(c.stichwort) : "ohne Stichwort"}</span>
+      ${istAusgewaehlt(c) ? `<span class="anker-marke">✓ ausgewählt</span>` : ""}
     </button>`;
 }
 
@@ -933,7 +1063,11 @@ checkFormular.addEventListener("submit", (ev) => {
 $("#btn-check-abbrechen").addEventListener("click", checkFormularSchliessen);
 
 $("#btn-check-loeschen").addEventListener("click", () => {
-  if (!confirm("Diesen Check löschen?")) return;
+  const verknuepft = istAusgewaehlt({ id: checkBearbeitetId });
+  const frage = verknuepft
+    ? "Dieser Check ist mit einem Eintrag verknüpft. Der Eintrag bleibt erhalten. Check trotzdem löschen?"
+    : "Diesen Check löschen?";
+  if (!confirm(frage)) return;
   if (!checksSpeichern(checks.filter((c) => c.id !== checkBearbeitetId))) return;
   checkFormularSchliessen();
   checkAnsichtRendern();
@@ -952,7 +1086,7 @@ function karteHtml(e) {
   const pills = e.gefuehle.map((g) =>
     `<span class="pill ${artVon(g.wort)}">${esc(g.wort)} <b>${g.staerke}</b></span>`).join("");
   return `
-    <article class="karte">
+    <article class="karte" data-eintrag-id="${esc(e.id)}" role="button" tabindex="0">
       <div class="karte-zeit">${uhrzeit(e.zeit)}</div>
       ${e.situation ? `<div class="karte-situation">${esc(e.situation)}</div>` : ""}
       ${e.gedanke ? `<blockquote>„${esc(e.gedanke)}“</blockquote>` : ""}
@@ -968,6 +1102,7 @@ function checkChipHtml(c) {
     <button type="button" class="check-chip" data-check-id="${esc(c.id)}">
       <span class="check-wert ${WERT_ART[c.wert]}">${WERT_ZEICHEN[c.wert]}</span>
       ${uhrzeit(c.zeit)}${c.stichwort ? " " + esc(c.stichwort) : ""}
+      ${istAusgewaehlt(c) ? `<span class="anker-marke">✓</span>` : ""}
     </button>`;
 }
 
@@ -983,9 +1118,11 @@ function tagHtml(datum) {
     </section>`;
 }
 
+// Alle Tage ("2026-10-19"), an denen es etwas in der Liste gibt – ältester zuerst
+const tageVon = (liste) => [...new Set(liste.map((x) => x.zeit.slice(0, 10)))].sort();
+
 function listeRendern() {
-  // alle Tage, an denen es Einträge oder Checks gibt – neuester Tag oben
-  const tage = [...new Set([...eintraege, ...checks].map((x) => x.zeit.slice(0, 10)))].sort().reverse();
+  const tage = tageVon([...eintraege, ...checks]).reverse();   // neuester Tag oben
   $("#liste-anzahl").textContent =
     `${anzahlText(eintraege.length, "Eintrag", "Einträge")} · ${anzahlText(checks.length, "Check", "Checks")}`;
   $("#liste").innerHTML = tage.length
@@ -993,12 +1130,17 @@ function listeRendern() {
     : `<p class="leer">Noch keine Einträge oder Checks.<br>Unter „Check“ hältst du einen Moment fest.</p>`;
 }
 
-// Check in der Liste angetippt: zur Check-Ansicht wechseln und dort bearbeiten
+// In der Liste angetippt: ein Check wird in der Check-Ansicht bearbeitet,
+// ein Eintrag im Eintrag-Formular
 $("#liste").addEventListener("click", (ev) => {
   const chip = ev.target.closest("[data-check-id]");
-  if (!chip) return;
-  zeigeAnsicht("check");
-  checkBearbeiten(chip.dataset.checkId);
+  if (chip) {
+    zeigeAnsicht("check");
+    checkBearbeiten(chip.dataset.checkId);
+    return;
+  }
+  const karte = ev.target.closest("[data-eintrag-id]");
+  if (karte) eintragBearbeiten(karte.dataset.eintragId);
 });
 
 // ---------- Export ----------
@@ -1016,18 +1158,37 @@ function eintragAlsText(e) {
   return zeilen.join("\n");
 }
 
-// Einträge im gewählten Zeitraum, älteste zuerst
-function exportEintraege() {
-  const von = $("#e-von").value || "0000-01-01";
-  const bis = $("#e-bis").value || "9999-12-31";
-  return eintraege
-    .filter((e) => e.zeit.slice(0, 10) >= von && e.zeit.slice(0, 10) <= bis)
-    .sort(nachZeit);
+// ### Kurz-Checks 19.10.2026
+// 07:15 − zu spät aufgestanden · 09:00 + Kollegen aus dem Urlaub · 10:00 0 Besprechungen
+function checksAlsText(datum, tagesChecks) {
+  const [j, m, t] = datum.split("-");
+  const zeile = tagesChecks.map((c) =>
+    `${uhrzeit(c.zeit)} ${WERT_ZEICHEN[c.wert]}${c.stichwort ? " " + einzeilig(c.stichwort) : ""}`
+  ).join(" · ");
+  return `### Kurz-Checks ${t}.${m}.${j}\n${zeile}`;
 }
 
+// Einträge und Checks im gewählten Zeitraum, jeweils älteste zuerst
+function exportDaten() {
+  const von = $("#e-von").value || "0000-01-01";
+  const bis = $("#e-bis").value || "9999-12-31";
+  const imZeitraum = (x) => x.zeit.slice(0, 10) >= von && x.zeit.slice(0, 10) <= bis;
+  return {
+    eintraege: eintraege.filter(imZeitraum).sort(nachZeit),
+    checks: checks.filter(imZeitraum).sort(nachZeit),
+  };
+}
+
+// Tag für Tag: erst der Checks-Block, dann die Einträge dieses Tages
 function exportText() {
-  const liste = exportEintraege();
-  return liste.length ? liste.map(eintragAlsText).join("\n\n") + "\n" : "";
+  const daten = exportDaten();
+  const bloecke = [];
+  for (const tag of tageVon([...daten.eintraege, ...daten.checks])) {
+    const tagesChecks = daten.checks.filter((c) => c.zeit.startsWith(tag));
+    if (tagesChecks.length) bloecke.push(checksAlsText(tag, tagesChecks));
+    for (const e of daten.eintraege.filter((x) => x.zeit.startsWith(tag))) bloecke.push(eintragAlsText(e));
+  }
+  return bloecke.length ? bloecke.join("\n\n") + "\n" : "";
 }
 
 function exportDateiname() {
@@ -1037,7 +1198,7 @@ function exportDateiname() {
 function exportZeitraumSetzen(tage) {
   const heute = datumIso(new Date());
   if (tage === "alle") {
-    const zeiten = eintraege.map((e) => e.zeit.slice(0, 10)).sort();
+    const zeiten = tageVon([...eintraege, ...checks]);
     $("#e-von").value = zeiten[0] || heute;
     $("#e-bis").value = zeiten.length && zeiten[zeiten.length - 1] > heute ? zeiten[zeiten.length - 1] : heute;
   } else {
@@ -1050,9 +1211,10 @@ function exportZeitraumSetzen(tage) {
 }
 
 function exportAktualisieren() {
-  const anzahl = exportEintraege().length;
-  $("#e-anzahl").textContent = anzahl === 1 ? "1 Eintrag im Zeitraum" : `${anzahl} Einträge im Zeitraum`;
-  $("#e-vorschau").textContent = exportText() || "Keine Einträge im gewählten Zeitraum.";
+  const daten = exportDaten();
+  $("#e-anzahl").textContent = `${anzahlText(daten.eintraege.length, "Eintrag", "Einträge")} · `
+    + `${anzahlText(daten.checks.length, "Check", "Checks")} im Zeitraum`;
+  $("#e-vorschau").textContent = exportText() || "Keine Einträge oder Checks im gewählten Zeitraum.";
 }
 
 $("#e-von").addEventListener("change", exportAktualisieren);
@@ -1064,7 +1226,7 @@ document.querySelector(".schnellwahl").addEventListener("click", (ev) => {
 
 $("#btn-kopieren").addEventListener("click", async () => {
   const text = exportText();
-  if (!text) return meldung("Keine Einträge im Zeitraum.");
+  if (!text) return meldung("Nichts im gewählten Zeitraum.");
   try {
     await navigator.clipboard.writeText(text);
   } catch {
@@ -1079,8 +1241,8 @@ $("#btn-kopieren").addEventListener("click", async () => {
   meldung("Kopiert ✓");
 });
 
-function herunterladen(text, name) {
-  const url = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
+function herunterladen(text, name, typ = "text/markdown;charset=utf-8") {
+  const url = URL.createObjectURL(new Blob([text], { type: typ }));
   const link = document.createElement("a");
   link.href = url;
   link.download = name;
@@ -1092,7 +1254,7 @@ function herunterladen(text, name) {
 
 $("#btn-laden").addEventListener("click", () => {
   const text = exportText();
-  if (!text) return meldung("Keine Einträge im Zeitraum.");
+  if (!text) return meldung("Nichts im gewählten Zeitraum.");
   herunterladen(text, exportDateiname());
 });
 
@@ -1100,7 +1262,7 @@ $("#btn-laden").addEventListener("click", () => {
 // eventuell nicht zu – dann wird dieselbe Datei als .txt geteilt.
 $("#btn-teilen").addEventListener("click", async () => {
   const text = exportText();
-  if (!text) return meldung("Keine Einträge im Zeitraum.");
+  if (!text) return meldung("Nichts im gewählten Zeitraum.");
   const name = exportDateiname();
   const varianten = [
     new File([text], name, { type: "text/markdown" }),
@@ -1119,6 +1281,130 @@ $("#btn-teilen").addEventListener("click", async () => {
   }
 });
 
+// ---------- Backup (JSON) ----------
+// Format der Datei:
+// { "app": "feel", "format": 2, "exportiert": "…", "eintraege": [...], "checks": [...] }
+function backupStandRendern() {
+  const el = $("#backup-stand");
+  const letztes = localStorage.getItem(BACKUP_SCHLUESSEL);
+  if (!letztes) {
+    el.textContent = "Noch kein Backup gespeichert.";
+    el.classList.add("warnung");
+    return;
+  }
+  const datum = datumIso(new Date(letztes));
+  const tage = Math.round((new Date(heuteIso()) - new Date(datum)) / 86400000);
+  const wann = tage === 0 ? "heute" : tage === 1 ? "gestern" : `vor ${tage} Tagen`;
+  el.textContent = `Letztes Backup: ${tagText(datum)} (${wann})`;
+  el.classList.toggle("warnung", tage > 14);
+}
+
+$("#btn-backup").addEventListener("click", () => {
+  const backup = { app: "feel", format: AKTUELLE_VERSION, exportiert: new Date().toISOString(), eintraege, checks };
+  herunterladen(JSON.stringify(backup, null, 2), `feel-backup_${heuteIso()}.json`, "application/json");
+  localStorage.setItem(BACKUP_SCHLUESSEL, new Date().toISOString());
+  backupStandRendern();
+  meldung("Backup gespeichert ✓");
+});
+
+// Liest ein Backup und prüft jeden Datensatz. Versteht auch einfachere, ältere Formen:
+//   { format: 2, eintraege: [...], checks: [...] }   aktuelles Format
+//   { eintraege: [...] }                              ohne Checks
+//   [ ... ]                                           nur eine Liste von Einträgen
+// Unbekannte zusätzliche Felder bleiben erhalten (für spätere Versionen).
+function backupLesen(inhalt) {
+  let roheEintraege;
+  let roheChecks = [];
+  if (Array.isArray(inhalt)) {
+    roheEintraege = inhalt;
+  } else if (inhalt && Array.isArray(inhalt.eintraege)) {
+    if (Number(inhalt.format) > AKTUELLE_VERSION) {
+      return { fehler: "Dieses Backup stammt aus einer neueren Version von Feel. Bitte zuerst die App aktualisieren (zweimal öffnen)." };
+    }
+    roheEintraege = inhalt.eintraege;
+    roheChecks = Array.isArray(inhalt.checks) ? inhalt.checks : [];
+  } else {
+    return { fehler: "Diese Datei ist kein Feel-Backup." };
+  }
+
+  const zeitOk = (z) => typeof z === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(z);
+  const text = (t) => (typeof t === "string" ? t : "");
+  const ergebnis = { eintraege: [], checks: [], uebersprungen: 0 };
+
+  for (const e of roheEintraege) {
+    if (!e || typeof e.id !== "string" || !zeitOk(e.zeit)) { ergebnis.uebersprungen++; continue; }
+    ergebnis.eintraege.push({
+      ...e,
+      situation: text(e.situation),
+      gedanke: text(e.gedanke),
+      gefuehle: (Array.isArray(e.gefuehle) ? e.gefuehle : [])
+        .filter((g) => g && typeof g.wort === "string")
+        .map((g) => ({ wort: g.wort, staerke: Number(g.staerke) || 0 })),
+      koerper: (Array.isArray(e.koerper) ? e.koerper : []).filter((k) => typeof k === "string"),
+      koerperText: text(e.koerperText),
+      getan: text(e.getan),
+      besprechung: e.besprechung && typeof e.besprechung === "object" ? e.besprechung : null,
+      checkId: typeof e.checkId === "string" ? e.checkId : null,
+    });
+  }
+  for (const c of roheChecks) {
+    if (!c || typeof c.id !== "string" || !zeitOk(c.zeit) || !["+", "0", "-"].includes(c.wert)) {
+      ergebnis.uebersprungen++;
+      continue;
+    }
+    ergebnis.checks.push({ ...c, stichwort: text(c.stichwort) });
+  }
+  return ergebnis;
+}
+
+// Nur hinzufügen, was es noch nicht gibt (gleiche id = schon vorhanden)
+function nurNeue(vorhanden, neu) {
+  const ids = new Set(vorhanden.map((x) => x.id));
+  const ergebnis = [];
+  for (const x of neu) {
+    if (ids.has(x.id)) continue;
+    ids.add(x.id);   // so zählt auch ein doppelter Datensatz im Backup selbst nur einmal
+    ergebnis.push(x);
+  }
+  return ergebnis;
+}
+
+$("#btn-import").addEventListener("click", () => $("#import-datei").click());
+
+$("#import-datei").addEventListener("change", async (ev) => {
+  const datei = ev.target.files[0];
+  ev.target.value = "";   // damit dieselbe Datei später nochmal gewählt werden kann
+  if (!datei) return;
+
+  let inhalt;
+  try {
+    inhalt = JSON.parse(await datei.text());
+  } catch {
+    return alert("Diese Datei ist kein Feel-Backup (kein gültiges JSON).");
+  }
+  const backup = backupLesen(inhalt);
+  if (backup.fehler) return alert(backup.fehler);
+
+  const neueEintraege = nurNeue(eintraege, backup.eintraege);
+  const neueChecks = nurNeue(checks, backup.checks);
+  if (!neueEintraege.length && !neueChecks.length) {
+    return alert("Alles aus diesem Backup ist schon vorhanden.");
+  }
+  const frage = `Aus dem Backup hinzufügen: ${anzahlText(neueEintraege.length, "Eintrag", "Einträge")}`
+    + ` und ${anzahlText(neueChecks.length, "Check", "Checks")}.`
+    + (backup.uebersprungen
+      ? `\n${anzahlText(backup.uebersprungen, "unlesbarer Datensatz wird", "unlesbare Datensätze werden")} übersprungen.`
+      : "")
+    + "\n\nVorhandene Daten bleiben unverändert.";
+  if (!confirm(frage)) return;
+
+  if (!eintraegeSpeichern([...eintraege, ...neueEintraege])) return;
+  if (!checksSpeichern([...checks, ...neueChecks])) return;
+  exportAktualisieren();
+  ankerChecksRendern();
+  meldung("Backup geladen ✓");
+});
+
 // ---------- Ansichten umschalten ----------
 function zeigeAnsicht(name) {
   for (const s of document.querySelectorAll(".ansicht")) s.hidden = s.id !== `ansicht-${name}`;
@@ -1128,6 +1414,7 @@ function zeigeAnsicht(name) {
   if (name === "check") checkAnsichtRendern();
   if (name === "neu") {
     zeitAuffrischen();
+    ankerChecksRendern();   // es können neue Checks dazugekommen sein
     if (entwurfHinweis) meldung("Entwurf wiederhergestellt");
     entwurfHinweis = false;
   }
@@ -1135,6 +1422,7 @@ function zeigeAnsicht(name) {
   if (name === "export") {
     if (!$("#e-von").value) exportZeitraumSetzen(7);
     else exportAktualisieren();
+    backupStandRendern();
   }
   window.scrollTo(0, 0);
 }
