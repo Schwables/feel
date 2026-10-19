@@ -28,12 +28,14 @@
     --angenehm: #5ec4a8;
     --unangenehm: #e8907f;
     --eigen: #c4b2ff;
+    --neutral: #a9b4cc;
     --koerper: #e3c06f;
     --tab-hoehe: 64px;
     --unten: env(safe-area-inset-bottom, 0px);   /* Platz für die Gestenleiste */
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }   /* "hidden" gewinnt immer, auch gegen display: grid */
   html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0;
@@ -195,6 +197,55 @@
     color: var(--farbe); background: color-mix(in srgb, var(--farbe) 18%, transparent);
   }
   .leer { color: var(--text-leise); text-align: center; padding: 40px 12px; }
+  .tage { display: grid; gap: 24px; }
+  .tag { display: grid; gap: 10px; }
+  .tag-kopf { margin: 0; font-size: 1rem; font-weight: 600; color: var(--text-leise); }
+
+  /* ---------- Kurz-Check ---------- */
+  .neutral { --farbe: var(--neutral); }
+  .wertknoepfe { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .wertknopf {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    min-height: 116px; border-radius: 20px; cursor: pointer;
+    font: inherit; font-size: .85rem; color: var(--farbe);
+    background: color-mix(in srgb, var(--farbe) 12%, var(--flaeche));
+    border: 2px solid color-mix(in srgb, var(--farbe) 35%, transparent);
+  }
+  .wertknopf span { font-size: 2.8rem; font-weight: 700; line-height: 1; }
+  .wertknopf:active { transform: scale(.97); }
+  .wertknopf[aria-pressed="true"] { background: var(--farbe); border-color: var(--farbe); color: #10121a; }
+
+  .check-formular {
+    display: grid; gap: 10px; margin-bottom: 22px; padding: 12px 14px 14px;
+    background: var(--flaeche); border-radius: 16px;
+  }
+  .check-formular .gruppe { margin: 0; }
+  .check-formular input { background: var(--bg); }
+  .check-aktionen { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+  .check-aktionen .haupt { min-height: 52px; font-size: 1rem; box-shadow: none; }
+  .gefahr { color: var(--unangenehm); }
+
+  .abschnitt { margin: 0 0 8px; font-size: 1rem; font-weight: 600; color: var(--text-leise); }
+  .check-liste { display: grid; gap: 6px; }
+  .check-zeile {
+    display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px 14px;
+    border: 0; border-radius: 12px; background: var(--flaeche); color: var(--text);
+    font: inherit; text-align: left; cursor: pointer;
+  }
+  .check-uhr { color: var(--text-leise); font-variant-numeric: tabular-nums; }
+  .check-wert {
+    display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--farbe); color: #10121a; font-weight: 700;
+  }
+  .check-wort { flex: 1; overflow-wrap: anywhere; }
+  .check-wort.ohne { color: var(--text-leise); font-style: italic; }
+  .check-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .check-chip {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px 0 6px;
+    border: 0; border-radius: 999px; background: var(--flaeche); color: var(--text);
+    font: inherit; font-size: .92rem; cursor: pointer;
+  }
+  .check-chip .check-wert { width: 26px; height: 26px; }
 
   /* ---------- Export ---------- */
   .zwei { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -213,7 +264,7 @@
   /* ---------- Reiterleiste unten ---------- */
   .tabs {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 10;
-    display: grid; grid-template-columns: repeat(3, 1fr);
+    display: grid; grid-template-columns: repeat(4, 1fr);
     padding-bottom: var(--unten);
     background: rgba(18, 19, 24, .94); border-top: 1px solid var(--rand);
     backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -230,7 +281,7 @@
   .meldung {
     position: fixed; left: 50%; z-index: 20;
     bottom: calc(var(--tab-hoehe) + var(--unten) + 86px);
-    max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 12px;
+    width: max-content; max-width: calc(100% - 32px); padding: 12px 18px; border-radius: 12px;
     background: var(--text); color: var(--bg); font-weight: 600;
     opacity: 0; transform: translate(-50%, 16px); pointer-events: none;
     transition: opacity .25s, transform .25s;
@@ -246,8 +297,37 @@
      ============================================================ -->
 <main>
 
+  <!-- ===== Ansicht 0: Kurz-Check (Startbildschirm) ===== -->
+  <section id="ansicht-check" class="ansicht">
+    <header class="kopf">
+      <h1>Kurz-Check</h1>
+      <span id="check-datum" class="leise"></span>
+    </header>
+
+    <div id="wertknoepfe" class="wertknoepfe">
+      <button type="button" class="wertknopf angenehm" data-wert="+" aria-pressed="false"><span>+</span>angenehm</button>
+      <button type="button" class="wertknopf neutral" data-wert="0" aria-pressed="false"><span>0</span>neutral</button>
+      <button type="button" class="wertknopf unangenehm" data-wert="-" aria-pressed="false"><span>−</span>unangenehm</button>
+    </div>
+
+    <form id="check-formular" class="check-formular" novalidate autocomplete="off" hidden>
+      <p id="check-modus" class="gruppe">Neuer Check</p>
+      <input type="text" id="c-stichwort" maxlength="80" enterkeyhint="done"
+             placeholder="Stichwort (optional)" aria-label="Stichwort">
+      <input type="datetime-local" id="c-zeit" aria-label="Datum und Uhrzeit">
+      <div class="check-aktionen">
+        <button type="button" id="btn-check-abbrechen" class="knopf">Abbrechen</button>
+        <button type="submit" class="knopf haupt">Speichern</button>
+      </div>
+      <button type="button" id="btn-check-loeschen" class="text-knopf gefahr" hidden>Check löschen</button>
+    </form>
+
+    <h2 class="abschnitt">Heute</h2>
+    <div id="checks-heute" class="check-liste"></div>
+  </section>
+
   <!-- ===== Ansicht 1: Neuer Eintrag ===== -->
-  <section id="ansicht-neu" class="ansicht">
+  <section id="ansicht-neu" class="ansicht" hidden>
     <header class="kopf">
       <h1>Neuer Eintrag</h1>
       <button type="button" id="btn-leeren" class="text-knopf">Leeren</button>
@@ -333,7 +413,7 @@
       <h1>Einträge</h1>
       <span id="liste-anzahl" class="leise"></span>
     </header>
-    <div id="liste" class="karten"></div>
+    <div id="liste" class="tage"></div>
   </section>
 
   <!-- ===== Ansicht 3: Export ===== -->
@@ -371,9 +451,13 @@
 </main>
 
 <nav class="tabs" aria-label="Ansichten">
+  <button type="button" class="tab" data-ansicht="check">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>
+    Check
+  </button>
   <button type="button" class="tab" data-ansicht="neu">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-    Neu
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+    Eintrag
   </button>
   <button type="button" class="tab" data-ansicht="liste">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>
@@ -402,7 +486,10 @@ const KOERPER = ["Brust", "Bauch", "Hals", "Kiefer", "Schultern", "Hände", "Kop
 
 const STARTWERT = 50;                              // Stärke, wenn ein Gefühl angetippt wird
 const SPEICHER_SCHLUESSEL = "feel.eintraege.v1";   // hier liegen alle Einträge
+const CHECKS_SCHLUESSEL = "feel.checks.v1";        // hier liegen alle Kurz-Checks
 const ENTWURF_SCHLUESSEL = "feel.entwurf.v1";      // halb ausgefülltes Formular
+const VERSION_SCHLUESSEL = "feel.version";         // Version der gespeicherten Datenstruktur
+const AKTUELLE_VERSION = 2;
 
 // ---------- Kleine Hilfsfunktionen ----------
 const $ = (selektor) => document.querySelector(selektor);
@@ -446,6 +533,18 @@ function neueId() {
 // Zeilenumbrüche im Export durch " / " ersetzen, damit jedes Feld eine Zeile bleibt
 const einzeilig = (text) => text.trim().replace(/\s*\n\s*/g, " / ");
 
+// (3, "Eintrag", "Einträge") -> "3 Einträge"
+const anzahlText = (n, eins, mehr) => `${n} ${n === 1 ? eins : mehr}`;
+
+const heuteIso = () => datumIso(new Date());
+const uhrzeit = (zeit) => zeit.slice(11, 16);          // "2026-10-19T07:15" -> "07:15"
+
+// "2026-10-19" -> "Mo, 19.10.2026" bzw. kurz "Mo, 19.10."
+function tagText(datum, kurz = false) {
+  const [j, m, t] = datum.split("-");
+  return `${wochentag(datum)}, ${t}.${m}.${kurz ? "" : j}`;
+}
+
 // Ordnet ein Gefühlswort seiner Farbgruppe zu
 function artVon(wort) {
   if (GEFUEHLE_ANGENEHM.includes(wort)) return "angenehm";
@@ -462,25 +561,58 @@ function meldung(text) {
   meldungTimer = setTimeout(() => el.classList.remove("sichtbar"), 2200);
 }
 
+// ---------- Migration ----------
+// Läuft bei jedem Start, bevor Daten gelesen werden. Sie bringt ältere gespeicherte
+// Daten auf die aktuelle Struktur (AKTUELLE_VERSION).
+//   Version 1: nur Einträge.
+//   Version 2: zusätzlich Kurz-Checks unter eigenem Schlüssel. Alte Einträge
+//              bleiben unverändert gültig, darum gibt es für 1 → 2 nichts umzubauen.
+// Spätere Umbauten kommen als weiterer Schritt dazu, z. B.: if (version < 3) { ... }
+function migrieren() {
+  const version = Number(localStorage.getItem(VERSION_SCHLUESSEL) || 1);
+  if (version >= AKTUELLE_VERSION) return;
+
+  // Sicherheitskopie des alten Stands, bevor irgendetwas geändert wird
+  const alt = localStorage.getItem(SPEICHER_SCHLUESSEL);
+  try {
+    if (alt) localStorage.setItem(`feel.sicherung.v${version}`, alt);
+  } catch { /* Speicher voll: 1 → 2 ändert nichts an den Einträgen, also weiter */ }
+
+  localStorage.setItem(VERSION_SCHLUESSEL, String(AKTUELLE_VERSION));
+}
+migrieren();
+
 // ---------- Speicher (localStorage) ----------
-// localStorage speichert nur Text. Darum wird die Liste mit JSON.stringify
+// localStorage speichert nur Text. Darum wird eine Liste mit JSON.stringify
 // in Text verwandelt und mit JSON.parse wieder zurück (wie json.dumps/loads in Python).
-function eintraegeLaden() {
-  const roh = localStorage.getItem(SPEICHER_SCHLUESSEL);
+function listeLaden(schluessel) {
+  const roh = localStorage.getItem(schluessel);
   return roh ? JSON.parse(roh) : [];
 }
 
-let eintraege = eintraegeLaden();
-
-function eintraegeSpeichern(neueListe) {
+function listeSpeichern(schluessel, liste) {
   try {
-    localStorage.setItem(SPEICHER_SCHLUESSEL, JSON.stringify(neueListe));
-    eintraege = neueListe;
+    localStorage.setItem(schluessel, JSON.stringify(liste));
     return true;
   } catch (fehler) {
     alert("Speichern fehlgeschlagen: " + fehler.message);
     return false;
   }
+}
+
+let eintraege = listeLaden(SPEICHER_SCHLUESSEL);
+let checks = listeLaden(CHECKS_SCHLUESSEL);
+
+function eintraegeSpeichern(neueListe) {
+  if (!listeSpeichern(SPEICHER_SCHLUESSEL, neueListe)) return false;
+  eintraege = neueListe;
+  return true;
+}
+
+function checksSpeichern(neueListe) {
+  if (!listeSpeichern(CHECKS_SCHLUESSEL, neueListe)) return false;
+  checks = neueListe;
+  return true;
 }
 
 // Bittet den Browser, die Daten nicht automatisch aufzuräumen, wenn der Speicher knapp wird
@@ -705,6 +837,114 @@ const besprechungText = (b) =>
   `angesprochen ${b.angesprochen ?? "–"} · ${b.zeitpunkt ?? "–"} · Stellschraube ${b.stellschraube ?? "–"}`;
 const nachZeit = (a, b) => a.zeit.localeCompare(b.zeit);
 
+// ---------- Kurz-Checks ----------
+// Ein Check: { id, zeit: "2026-10-19T07:15", wert: "+" | "0" | "-", stichwort, erstellt }
+const WERT_ZEICHEN = { "+": "+", "0": "0", "-": "−" };
+const WERT_ART = { "+": "angenehm", "0": "neutral", "-": "unangenehm" };
+
+const checkFormular = $("#check-formular");
+let checkWert = null;           // gewählter Wert im offenen Check-Formular
+let checkBearbeitetId = null;   // null = neuer Check, sonst die id des bearbeiteten Checks
+
+const checksAmTag = (datum) => checks.filter((c) => c.zeit.startsWith(datum)).sort(nachZeit);
+
+function wertKnoepfeRendern() {
+  for (const knopf of document.querySelectorAll(".wertknopf")) {
+    knopf.setAttribute("aria-pressed", knopf.dataset.wert === checkWert);
+  }
+}
+
+// Öffnet das kleine Formular: für einen neuen Check (nur wert bekannt)
+// oder für einen vorhandenen Check zum Bearbeiten
+function checkFormularOeffnen(check) {
+  checkBearbeitetId = check.id ?? null;
+  checkWert = check.wert;
+  $("#c-stichwort").value = check.stichwort ?? "";
+  $("#c-zeit").value = check.zeit ?? jetztLokal();
+  $("#check-modus").textContent = checkBearbeitetId ? "Check bearbeiten" : "Neuer Check";
+  $("#btn-check-loeschen").hidden = !checkBearbeitetId;
+  checkFormular.hidden = false;
+  wertKnoepfeRendern();
+}
+
+function checkFormularSchliessen() {
+  checkFormular.hidden = true;
+  checkWert = null;
+  checkBearbeitetId = null;
+  wertKnoepfeRendern();
+  document.activeElement.blur();   // Tastatur schließen
+}
+
+function checkBearbeiten(id) {
+  const check = checks.find((c) => c.id === id);
+  if (!check) return;
+  checkFormularOeffnen(check);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function checkZeileHtml(c) {
+  return `
+    <button type="button" class="check-zeile" data-check-id="${esc(c.id)}">
+      <span class="check-uhr">${uhrzeit(c.zeit)}</span>
+      <span class="check-wert ${WERT_ART[c.wert]}">${WERT_ZEICHEN[c.wert]}</span>
+      <span class="check-wort ${c.stichwort ? "" : "ohne"}">${c.stichwort ? esc(c.stichwort) : "ohne Stichwort"}</span>
+    </button>`;
+}
+
+function checkAnsichtRendern() {
+  const heute = heuteIso();
+  const liste = checksAmTag(heute);
+  $("#check-datum").textContent = tagText(heute, true);
+  $("#checks-heute").innerHTML = liste.length
+    ? liste.map(checkZeileHtml).join("")
+    : `<p class="leise">Noch keine Checks heute.</p>`;
+}
+
+// Großer Knopf: öffnet das Formular – oder ändert den Wert, wenn es schon offen ist
+$("#wertknoepfe").addEventListener("click", (ev) => {
+  const knopf = ev.target.closest(".wertknopf");
+  if (!knopf) return;
+  if (checkFormular.hidden) {
+    checkFormularOeffnen({ wert: knopf.dataset.wert });
+  } else {
+    checkWert = knopf.dataset.wert;
+    wertKnoepfeRendern();
+  }
+});
+
+// Speichern (auch die Enter-Taste im Stichwort-Feld landet hier)
+checkFormular.addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const zeit = $("#c-zeit").value;
+  if (!zeit) return meldung("Bitte Datum und Uhrzeit angeben.");
+  const daten = { zeit, wert: checkWert, stichwort: $("#c-stichwort").value.trim() };
+
+  const neueListe = checkBearbeitetId
+    ? checks.map((c) => (c.id === checkBearbeitetId ? { ...c, ...daten, geaendert: new Date().toISOString() } : c))
+    : [...checks, { id: neueId(), ...daten, erstellt: new Date().toISOString() }];
+  if (!checksSpeichern(neueListe)) return;
+
+  speicherDauerhaftAnfragen();
+  checkFormularSchliessen();
+  checkAnsichtRendern();
+  meldung("Check gespeichert ✓");
+});
+
+$("#btn-check-abbrechen").addEventListener("click", checkFormularSchliessen);
+
+$("#btn-check-loeschen").addEventListener("click", () => {
+  if (!confirm("Diesen Check löschen?")) return;
+  if (!checksSpeichern(checks.filter((c) => c.id !== checkBearbeitetId))) return;
+  checkFormularSchliessen();
+  checkAnsichtRendern();
+  meldung("Check gelöscht");
+});
+
+$("#checks-heute").addEventListener("click", (ev) => {
+  const zeile = ev.target.closest("[data-check-id]");
+  if (zeile) checkBearbeiten(zeile.dataset.checkId);
+});
+
 // ---------- Liste ----------
 function karteHtml(e) {
   const zeile = (titel, wert) =>
@@ -713,7 +953,7 @@ function karteHtml(e) {
     `<span class="pill ${artVon(g.wort)}">${esc(g.wort)} <b>${g.staerke}</b></span>`).join("");
   return `
     <article class="karte">
-      <div class="karte-zeit">${wochentag(e.zeit)}, ${esc(zeitText(e.zeit))}</div>
+      <div class="karte-zeit">${uhrzeit(e.zeit)}</div>
       ${e.situation ? `<div class="karte-situation">${esc(e.situation)}</div>` : ""}
       ${e.gedanke ? `<blockquote>„${esc(e.gedanke)}“</blockquote>` : ""}
       ${pills ? `<div class="pills">${pills}</div>` : ""}
@@ -723,13 +963,43 @@ function karteHtml(e) {
     </article>`;
 }
 
-function listeRendern() {
-  const sortiert = [...eintraege].sort(nachZeit).reverse();   // neueste oben
-  $("#liste-anzahl").textContent = sortiert.length === 1 ? "1 Eintrag" : `${sortiert.length} Einträge`;
-  $("#liste").innerHTML = sortiert.length
-    ? sortiert.map(karteHtml).join("")
-    : `<p class="leer">Noch keine Einträge.<br>Unter „Neu“ legst du den ersten an.</p>`;
+function checkChipHtml(c) {
+  return `
+    <button type="button" class="check-chip" data-check-id="${esc(c.id)}">
+      <span class="check-wert ${WERT_ART[c.wert]}">${WERT_ZEICHEN[c.wert]}</span>
+      ${uhrzeit(c.zeit)}${c.stichwort ? " " + esc(c.stichwort) : ""}
+    </button>`;
 }
+
+// Ein Tag: oben die Checks als kompakte Chips, darunter die Einträge – jeweils nach Uhrzeit
+function tagHtml(datum) {
+  const tagesChecks = checksAmTag(datum);
+  const tagesEintraege = eintraege.filter((e) => e.zeit.startsWith(datum)).sort(nachZeit);
+  return `
+    <section class="tag">
+      <h2 class="tag-kopf">${tagText(datum)}</h2>
+      ${tagesChecks.length ? `<div class="check-chips">${tagesChecks.map(checkChipHtml).join("")}</div>` : ""}
+      ${tagesEintraege.map(karteHtml).join("")}
+    </section>`;
+}
+
+function listeRendern() {
+  // alle Tage, an denen es Einträge oder Checks gibt – neuester Tag oben
+  const tage = [...new Set([...eintraege, ...checks].map((x) => x.zeit.slice(0, 10)))].sort().reverse();
+  $("#liste-anzahl").textContent =
+    `${anzahlText(eintraege.length, "Eintrag", "Einträge")} · ${anzahlText(checks.length, "Check", "Checks")}`;
+  $("#liste").innerHTML = tage.length
+    ? tage.map(tagHtml).join("")
+    : `<p class="leer">Noch keine Einträge oder Checks.<br>Unter „Check“ hältst du einen Moment fest.</p>`;
+}
+
+// Check in der Liste angetippt: zur Check-Ansicht wechseln und dort bearbeiten
+$("#liste").addEventListener("click", (ev) => {
+  const chip = ev.target.closest("[data-check-id]");
+  if (!chip) return;
+  zeigeAnsicht("check");
+  checkBearbeiten(chip.dataset.checkId);
+});
 
 // ---------- Export ----------
 function eintragAlsText(e) {
@@ -855,7 +1125,12 @@ function zeigeAnsicht(name) {
   for (const t of document.querySelectorAll(".tab")) {
     t.setAttribute("aria-current", t.dataset.ansicht === name ? "page" : "false");
   }
-  if (name === "neu") zeitAuffrischen();
+  if (name === "check") checkAnsichtRendern();
+  if (name === "neu") {
+    zeitAuffrischen();
+    if (entwurfHinweis) meldung("Entwurf wiederhergestellt");
+    entwurfHinweis = false;
+  }
   if (name === "liste") listeRendern();
   if (name === "export") {
     if (!$("#e-von").value) exportZeitraumSetzen(7);
@@ -869,15 +1144,17 @@ document.querySelector(".tabs").addEventListener("click", (ev) => {
   if (tab) zeigeAnsicht(tab.dataset.ansicht);
 });
 
-// App kommt aus dem Hintergrund zurück
+// App kommt aus dem Hintergrund zurück (vielleicht ist inzwischen ein neuer Tag)
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") zeitAuffrischen();
+  if (document.visibilityState !== "visible") return;
+  zeitAuffrischen();
+  checkAnsichtRendern();
 });
 
 // ---------- Start ----------
+let entwurfHinweis = entwurfBeruehrt;   // beim ersten Öffnen von "Eintrag" Bescheid geben
 formularFuellen();
-zeigeAnsicht("neu");
-if (entwurfBeruehrt) meldung("Entwurf wiederhergestellt");
+zeigeAnsicht("check");
 
 // Service Worker anmelden (macht die App offline-fähig, siehe sw.js)
 if ("serviceWorker" in navigator) {
