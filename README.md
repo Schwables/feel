@@ -6,9 +6,11 @@ Alle Einträge bleiben im Browser auf dem Handy. Es gibt keinen Server, kein Kon
 ## So wird Feel benutzt
 
 - **Check** (Startbildschirm): tagsüber in wenigen Sekunden festhalten, ob ein Moment angenehm (+),
-  neutral (0) oder unangenehm (−) war, optional mit Stichwort. Antippen eines Checks: bearbeiten oder löschen.
+  neutral (0) oder unangenehm (−) war, optional mit Stichwort und Körper-Chips. Antippen eines Checks:
+  bearbeiten oder löschen.
 - **Eintrag**: der vollständige Eintrag. Oben stehen die Checks des Tages aus „Wann“. Ein angetippter Check
-  übernimmt Uhrzeit und (falls leer) Situation und wird als „ausgewählt“ markiert.
+  übernimmt Uhrzeit und (falls leer) Situation und Körper und wird als „ausgewählt“ markiert.
+  Per Schalter „Besprechung mit eigenem Punkt“: wann angesprochen und was vorher gemacht wurde, im Klartext.
 - **Liste**: alles nach Tagen. Einen Eintrag oder Check antippen, um ihn zu bearbeiten oder zu löschen.
 - **Export**: Text für den Wochen-Chat (Checks pro Tag vor den Einträgen) und das **Backup**.
 
@@ -19,8 +21,11 @@ Alle Einträge bleiben im Browser auf dem Handy. Es gibt keinen Server, kein Kon
 | `feel.eintraege.v1` | alle vollständigen Einträge |
 | `feel.checks.v1` | alle Kurz-Checks |
 | `feel.entwurf.v1` | das gerade halb ausgefüllte Eintrag-Formular |
-| `feel.version` | Version der Datenstruktur (aktuell 2), für die Migration beim Start |
-| `feel.sicherung.v1` | Sicherheitskopie der Einträge von vor der Migration auf Version 2 |
+| `feel.version` | Version der Datenstruktur (aktuell 3), für die Migration beim Start |
+| `feel.sicherung.v1`, `feel.sicherung.v2`, `feel.sicherung.v2.checks` | Sicherheitskopien von vor der jeweiligen Migration |
+
+Besprechungen aus App-Version 4 und älter („ja/nein · früh/spät · Stellschraube“) bleiben unverändert
+gespeichert und werden beim Anzeigen und Exportieren in den Klartext übersetzt.
 | `feel.letztesBackup` | Zeitpunkt des letzten JSON-Backups |
 
 ## Dateien

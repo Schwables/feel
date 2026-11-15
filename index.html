@@ -150,16 +150,20 @@
   .schalter input:checked::after { transform: translateX(22px); background: #fff; }
   .details { padding: 2px 4px 0; }
 
-  /* ---------- Segmente (eine Auswahl aus wenigen) ---------- */
-  .segmente {
-    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px;
-    padding: 4px; background: var(--flaeche); border-radius: 14px;
+  /* ---------- Antwort-Felder der Besprechung (Titel + Erklärung) ---------- */
+  .frage { margin: 18px 0 8px; font-weight: 600; font-size: .95rem; }
+  .frage-hinweis { margin: -4px 0 10px; color: var(--text-leise); font-size: .85rem; line-height: 1.4; }
+  .optionen { display: grid; gap: 6px; }
+  .option {
+    display: block; width: 100%; min-height: 52px; padding: 10px 14px; text-align: left;
+    border: 1.5px solid var(--rand); border-radius: 14px; background: var(--flaeche);
+    font: inherit; color: var(--text); cursor: pointer;
   }
-  .segmente button {
-    min-height: 44px; border: 0; border-radius: 10px;
-    font: inherit; background: none; color: var(--text); cursor: pointer;
+  .option small { display: block; margin-top: 2px; color: var(--text-leise); font-size: .85rem; line-height: 1.35; }
+  .option[aria-pressed="true"] {
+    border-color: var(--akzent); background: color-mix(in srgb, var(--akzent) 16%, var(--flaeche));
   }
-  .segmente button[aria-pressed="true"] { background: var(--akzent); color: var(--akzent-text); font-weight: 600; }
+  .option[aria-pressed="true"] strong::before { content: "✓ "; color: var(--akzent); }
 
   /* ---------- Knöpfe ---------- */
   .knopf {
@@ -239,6 +243,11 @@
   }
   .check-wort { flex: 1; overflow-wrap: anywhere; }
   .check-wort.ohne { color: var(--text-leise); font-style: italic; }
+  .check-koerper { display: block; color: var(--text-leise); font-size: .85rem; font-style: normal; }
+  /* Körper-Chips im Kurz-Check: etwas kleiner, damit alles ohne Scrollen passt */
+  .chips.kompakt { gap: 6px; }
+  .chips.kompakt .chip { padding: 0 12px; font-size: .95rem; }
+  .check-formular .chip:not([aria-pressed="true"]) { background: var(--bg); }
   .check-chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .check-chip {
     display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px 0 6px;
@@ -334,6 +343,8 @@
       <p id="check-modus" class="gruppe">Neuer Check</p>
       <input type="text" id="c-stichwort" maxlength="80" enterkeyhint="done"
              placeholder="Stichwort (optional)" aria-label="Stichwort">
+      <p class="gruppe" id="c-koerper-titel">Körper (optional)</p>
+      <div class="chips kompakt" id="c-koerper" role="group" aria-labelledby="c-koerper-titel"></div>
       <input type="datetime-local" id="c-zeit" aria-label="Datum und Uhrzeit">
       <div class="check-aktionen">
         <button type="button" id="btn-check-abbrechen" class="knopf">Abbrechen</button>
@@ -403,26 +414,29 @@
 
       <div class="feld">
         <label class="schalter">
-          <span>Besprechung</span>
+          <span>Besprechung mit eigenem Punkt</span>
           <input type="checkbox" id="f-besprechung" role="switch">
         </label>
         <div id="besprechung-details" class="details" hidden>
-          <p class="gruppe">Punkt angesprochen</p>
-          <div class="segmente" data-besprechung="angesprochen">
-            <button type="button" data-wert="ja">ja</button>
-            <button type="button" data-wert="nein">nein</button>
+          <p class="frage" id="frage-angesprochen">Eigenen Punkt angesprochen?</p>
+          <div class="optionen" data-besprechung="angesprochen" role="group" aria-labelledby="frage-angesprochen">
+            <button type="button" class="option" data-wert="erste10"><strong>in den ersten 10 Minuten</strong></button>
+            <button type="button" class="option" data-wert="spaeter"><strong>später in der Sitzung</strong></button>
+            <button type="button" class="option" data-wert="nicht"><strong>gar nicht</strong></button>
           </div>
-          <p class="gruppe">Zeitpunkt</p>
-          <div class="segmente" data-besprechung="zeitpunkt">
-            <button type="button" data-wert="früh">früh</button>
-            <button type="button" data-wert="spät">spät</button>
-          </div>
-          <p class="gruppe">Stellschraube</p>
-          <div class="segmente" data-besprechung="stellschraube">
-            <button type="button" data-wert="1">1</button>
-            <button type="button" data-wert="2">2</button>
-            <button type="button" data-wert="3">3</button>
-            <button type="button" data-wert="keine">keine</button>
+
+          <p class="frage" id="frage-vorher">Was habe ich vorher gemacht? <span class="leise">(mehrere möglich)</span></p>
+          <p class="frage-hinweis">Vorbereitet = Agenda durchgehen, Satz parat.
+            Vorab platziert = der Punkt liegt schon vor der Sitzung auf dem Tisch.</p>
+          <div class="optionen" data-besprechung="vorher" role="group" aria-labelledby="frage-vorher">
+            <button type="button" class="option" data-wert="vorbereitet">
+              <strong>Vorbereitet</strong><small>Punkte und Einstiegssatz vorher notiert</small>
+            </button>
+            <button type="button" class="option" data-wert="platziert">
+              <strong>Vorab platziert</strong><small>als TOP angemeldet oder vorher per Mail/Issue geschickt
+              (zählt auch, wenn es Tage vorher war)</small>
+            </button>
+            <button type="button" class="option" data-wert="nichts"><strong>nichts davon</strong></button>
           </div>
         </div>
       </div>
@@ -528,17 +542,21 @@ const GEFUEHLE_UNANGENEHM = ["Nervosität", "Anspannung", "Erwartungsangst", "La
 const KOERPER = ["Brust", "Bauch", "Hals", "Kiefer", "Schultern", "Hände", "Kopf", "Herzklopfen", "blass",
   "Schweiß", "Energie hoch", "Energie niedrig", "Unruhe", "Schwere", "leicht", "nichts"];
 
-const STARTWERT = 50;                              // Stärke, wenn ein Gefühl angetippt wird
+// Besprechung mit eigenem Punkt: gespeicherter Wert -> Klartext für Anzeige und Export
+const ANGESPROCHEN_TEXT = { erste10: "in den ersten 10 Minuten", spaeter: "später in der Sitzung", nicht: "gar nicht" };
+const VORHER_TEXT = { vorbereitet: "vorbereitet", platziert: "vorab platziert", nichts: "nichts davon" };
+
+const STARTWERT = 50;                             // Stärke, wenn ein Gefühl angetippt wird
 const SPEICHER_SCHLUESSEL = "feel.eintraege.v1";   // hier liegen alle Einträge
 const CHECKS_SCHLUESSEL = "feel.checks.v1";        // hier liegen alle Kurz-Checks
 const ENTWURF_SCHLUESSEL = "feel.entwurf.v1";      // halb ausgefülltes Formular
 const VERSION_SCHLUESSEL = "feel.version";         // Version der gespeicherten Datenstruktur
 const BACKUP_SCHLUESSEL = "feel.letztesBackup";    // wann zuletzt ein Backup gespeichert wurde
-const DATEN_VERSION = 2;                           // Version der Datenstruktur (für Migration und Backup)
+const DATEN_VERSION = 3;                           // Version der Datenstruktur (für Migration und Backup)
 
 // Version der App selbst – bei jeder Änderung hochzählen. Sie steht unten unter "Export",
 // so siehst du, welche Version auf dem Handy läuft.
-const APP_VERSION = "4 · 19.10.2026";
+const APP_VERSION = "5 · 15.11.2026";
 
 // ---------- Kleine Hilfsfunktionen ----------
 const $ = (selektor) => document.querySelector(selektor);
@@ -585,6 +603,50 @@ const einzeilig = (text) => text.trim().replace(/\s*\n\s*/g, " / ");
 // (3, "Eintrag", "Einträge") -> "3 Einträge"
 const anzahlText = (n, eins, mehr) => `${n} ${n === 1 ? eins : mehr}`;
 
+// Mehrfachauswahl umschalten, bei der "nichts" (o. Ä.) alle anderen ausschließt und umgekehrt
+function auswahlUmschalten(liste, wort, nichts) {
+  if (liste.includes(wort)) return liste.filter((w) => w !== wort);
+  if (wort === nichts) return [nichts];
+  return [...liste.filter((w) => w !== nichts), wort];
+}
+
+// ---------- Besprechung: altes und neues Format ----------
+// Neu (ab App-Version 5):
+//   { angesprochen: "erste10" | "spaeter" | "nicht" | null, vorher: ["vorbereitet", "platziert"] | ["nichts"] | [] }
+// Alt (bis App-Version 4):
+//   { angesprochen: "ja" | "nein", zeitpunkt: "früh" | "spät", stellschraube: "1" | "2" | "3" | "keine" }
+// Alte Einträge bleiben unverändert gespeichert. Diese Funktion übersetzt sie beim Anzeigen,
+// Exportieren und Bearbeiten ins neue Format. Erst beim Speichern nach dem Bearbeiten
+// wird der Eintrag im neuen Format abgelegt.
+const ALT_STELLSCHRAUBE = { "1": ["vorbereitet"], "2": ["platziert"], keine: ["nichts"] };
+
+function besprechungNormalisieren(b) {
+  if (!b || typeof b !== "object") return null;
+  if (Array.isArray(b.vorher)) {   // schon im neuen Format – nur unbekannte Werte aussortieren
+    return {
+      angesprochen: Object.hasOwn(ANGESPROCHEN_TEXT, b.angesprochen) ? b.angesprochen : null,
+      vorher: b.vorher.filter((v) => Object.hasOwn(VORHER_TEXT, v)),
+    };
+  }
+  let angesprochen = null;
+  if (b.angesprochen === "nein") angesprochen = "nicht";
+  else if (b.zeitpunkt === "früh") angesprochen = "erste10";
+  else if (b.zeitpunkt === "spät") angesprochen = "spaeter";
+  else if (b.stellschraube === "3") angesprochen = "erste10";   // Stellschraube 3 zählt als „in den ersten 10 Minuten“
+  const vorher = Object.hasOwn(ALT_STELLSCHRAUBE, b.stellschraube) ? [...ALT_STELLSCHRAUBE[b.stellschraube]] : [];
+  return { angesprochen, vorher };
+}
+
+const leereBesprechung = () => ({ angesprochen: null, vorher: [] });
+
+// -> "angesprochen in den ersten 10 Minuten · vorbereitet, vorab platziert"
+function besprechungText(b) {
+  const n = besprechungNormalisieren(b) ?? leereBesprechung();
+  const angesprochen = n.angesprochen ? ANGESPROCHEN_TEXT[n.angesprochen] : "–";
+  const vorher = n.vorher.map((v) => VORHER_TEXT[v]).join(", ") || "–";
+  return `angesprochen ${angesprochen} · ${vorher}`;
+}
+
 const heuteIso = () => datumIso(new Date());
 const uhrzeit = (zeit) => zeit.slice(11, 16);          // "2026-10-19T07:15" -> "07:15"
 
@@ -618,16 +680,21 @@ function meldung(text) {
 //              optional checkId (Verweis auf einen Check) und geaendert haben.
 //              Alte Einträge ohne diese Felder bleiben gültig, darum gibt es
 //              für 1 → 2 nichts umzubauen.
-// Spätere Umbauten kommen als weiterer Schritt dazu, z. B.: if (version < 3) { ... }
+//   Version 3: Kurz-Checks können koerper haben; neue Besprechungen im Klartext-Format
+//              (siehe besprechungNormalisieren). Alte Daten bleiben unverändert und
+//              werden beim Anzeigen übersetzt, darum auch für 2 → 3 nichts umzubauen.
+// Spätere Umbauten kommen als weiterer Schritt dazu, z. B.: if (version < 4) { ... }
 function migrieren() {
   const version = Number(localStorage.getItem(VERSION_SCHLUESSEL) || 1);
   if (version >= DATEN_VERSION) return;
 
   // Sicherheitskopie des alten Stands, bevor irgendetwas geändert wird
-  const alt = localStorage.getItem(SPEICHER_SCHLUESSEL);
   try {
-    if (alt) localStorage.setItem(`feel.sicherung.v${version}`, alt);
-  } catch { /* Speicher voll: 1 → 2 ändert nichts an den Einträgen, also weiter */ }
+    const alteEintraege = localStorage.getItem(SPEICHER_SCHLUESSEL);
+    const alteChecks = localStorage.getItem(CHECKS_SCHLUESSEL);
+    if (alteEintraege) localStorage.setItem(`feel.sicherung.v${version}`, alteEintraege);
+    if (alteChecks) localStorage.setItem(`feel.sicherung.v${version}.checks`, alteChecks);
+  } catch { /* Speicher voll: bisher ändert keine Migration die Daten, also weiter */ }
 
   localStorage.setItem(VERSION_SCHLUESSEL, String(DATEN_VERSION));
 }
@@ -684,15 +751,17 @@ function leererEntwurf() {
     gefuehle: [],                         // [{wort: "Nervosität", staerke: 40}, ...] in Antipp-Reihenfolge
     koerper: [], koerperText: "", getan: "",
     besprechungAktiv: false,
-    besprechung: { angesprochen: null, zeitpunkt: null, stellschraube: null },
+    besprechung: leereBesprechung(),
     checkId: null,        // Kurz-Check, aus dem dieser Eintrag entsteht (Abend-Ansicht)
     bearbeitetId: null,   // null = neuer Eintrag, sonst die id des bearbeiteten Eintrags
   };
 }
 
-// Ein älterer gemerkter Entwurf kennt die neuen Felder noch nicht: mit Standardwerten auffüllen
+// Ein älterer gemerkter Entwurf kennt die neuen Felder noch nicht: mit Standardwerten
+// auffüllen und eine Besprechung im alten Format übersetzen
 const gemerkterEntwurf = localStorage.getItem(ENTWURF_SCHLUESSEL);
 let entwurf = gemerkterEntwurf ? { ...leererEntwurf(), ...JSON.parse(gemerkterEntwurf) } : leererEntwurf();
+entwurf.besprechung = besprechungNormalisieren(entwurf.besprechung) ?? leereBesprechung();
 let entwurfBeruehrt = gemerkterEntwurf !== null;   // false = noch nichts eingegeben
 
 function entwurfMerken() {
@@ -772,11 +841,12 @@ function staerkenRendern() {
 
 function besprechungRendern() {
   $("#besprechung-details").hidden = !entwurf.besprechungAktiv;
-  for (const gruppe of document.querySelectorAll("[data-besprechung]")) {
-    const wert = entwurf.besprechung[gruppe.dataset.besprechung];
-    for (const knopf of gruppe.querySelectorAll("button")) {
-      knopf.setAttribute("aria-pressed", knopf.dataset.wert === wert);
-    }
+  const { angesprochen, vorher } = entwurf.besprechung;
+  for (const knopf of document.querySelectorAll('[data-besprechung="angesprochen"] .option')) {
+    knopf.setAttribute("aria-pressed", knopf.dataset.wert === angesprochen);
+  }
+  for (const knopf of document.querySelectorAll('[data-besprechung="vorher"] .option')) {
+    knopf.setAttribute("aria-pressed", vorher.includes(knopf.dataset.wert));
   }
 }
 
@@ -793,8 +863,8 @@ formular.addEventListener("input", (ev) => {
   }
 });
 
-// Check in der Abend-Ansicht angetippt: Uhrzeit übernehmen, Situation nur, wenn sie noch leer ist.
-// Nochmal antippen hebt die Auswahl wieder auf.
+// Check in der Abend-Ansicht angetippt: Uhrzeit übernehmen, Situation und Körper nur,
+// wenn sie noch leer sind. Nochmal antippen hebt die Auswahl wieder auf.
 $("#anker-checks").addEventListener("click", (ev) => {
   const zeile = ev.target.closest("[data-check-id]");
   if (!zeile) return;
@@ -805,6 +875,7 @@ $("#anker-checks").addEventListener("click", (ev) => {
     entwurf.checkId = check.id;
     entwurf.zeit = check.zeit;
     if (!entwurf.situation.trim()) entwurf.situation = check.stichwort;
+    if (!entwurf.koerper.length) entwurf.koerper = [...(check.koerper ?? [])];
   }
   entwurfMerken();
   formularFuellen();
@@ -861,11 +932,7 @@ $("#staerken").addEventListener("click", (ev) => {
 $("#chips-koerper").addEventListener("click", (ev) => {
   const chip = ev.target.closest(".chip");
   if (!chip) return;
-  const wort = chip.dataset.wort;
-  const liste = entwurf.koerper;
-  if (liste.includes(wort)) entwurf.koerper = liste.filter((w) => w !== wort);
-  else if (wort === "nichts") entwurf.koerper = ["nichts"];
-  else entwurf.koerper = [...liste.filter((w) => w !== "nichts"), wort];
+  entwurf.koerper = auswahlUmschalten(entwurf.koerper, chip.dataset.wort, "nichts");
   entwurfMerken();
   chipsRendern();
 });
@@ -876,13 +943,20 @@ $("#f-besprechung").addEventListener("change", (ev) => {
   besprechungRendern();
 });
 
-// Segment-Knopf: antippen wählt aus, nochmal antippen hebt die Auswahl auf
+// "Angesprochen?": eine Antwort, nochmal antippen hebt sie auf.
+// "Vorher gemacht?": mehrere möglich, "nichts davon" schließt die anderen aus.
 $("#besprechung-details").addEventListener("click", (ev) => {
-  const knopf = ev.target.closest("button");
+  const knopf = ev.target.closest(".option");
   if (!knopf) return;
-  const feld = knopf.parentElement.dataset.besprechung;
+  const frage = knopf.parentElement.dataset.besprechung;
   const wert = knopf.dataset.wert;
-  entwurf.besprechung[feld] = entwurf.besprechung[feld] === wert ? null : wert;
+  const b = entwurf.besprechung;
+  if (frage === "angesprochen") {
+    b.angesprochen = b.angesprochen === wert ? null : wert;
+  } else {
+    const auswahl = auswahlUmschalten(b.vorher, wert, "nichts");
+    b.vorher = Object.keys(VORHER_TEXT).filter((v) => auswahl.includes(v));   // immer gleiche Reihenfolge
+  }
   entwurfMerken();
   besprechungRendern();
 });
@@ -912,7 +986,7 @@ function eintragBearbeiten(id) {
       gefuehle: e.gefuehle.map((g) => ({ ...g })),
       koerper: [...e.koerper], koerperText: e.koerperText, getan: e.getan,
       besprechungAktiv: Boolean(e.besprechung),
-      besprechung: e.besprechung ? { ...e.besprechung } : leererEntwurf().besprechung,
+      besprechung: besprechungNormalisieren(e.besprechung) ?? leereBesprechung(),   // altes Format -> neues
       checkId: e.checkId ?? null,
       bearbeitetId: e.id,
     };
@@ -948,7 +1022,9 @@ formular.addEventListener("submit", (ev) => {
     koerper: [...e.koerper],
     koerperText: e.koerperText.trim(),
     getan: e.getan.trim(),
-    besprechung: e.besprechungAktiv ? { ...e.besprechung } : null,
+    besprechung: e.besprechungAktiv
+      ? { angesprochen: e.besprechung.angesprochen, vorher: [...e.besprechung.vorher] }
+      : null,
     checkId: e.checkId,
   };
   const jetzt = new Date().toISOString();
@@ -973,17 +1049,17 @@ formular.addEventListener("submit", (ev) => {
 
 // ---------- Texte, die Liste und Export gemeinsam nutzen ----------
 const koerperZusammen = (e) => [...e.koerper, e.koerperText].filter(Boolean).join(", ");
-const besprechungText = (b) =>
-  `angesprochen ${b.angesprochen ?? "–"} · ${b.zeitpunkt ?? "–"} · Stellschraube ${b.stellschraube ?? "–"}`;
+const checkKoerperText = (c) => (c.koerper ?? []).join(", ");   // ältere Checks haben kein koerper
 const nachZeit = (a, b) => a.zeit.localeCompare(b.zeit);
 
 // ---------- Kurz-Checks ----------
-// Ein Check: { id, zeit: "2026-10-19T07:15", wert: "+" | "0" | "-", stichwort, erstellt }
+// Ein Check: { id, zeit: "2026-10-19T07:15", wert: "+" | "0" | "-", stichwort, koerper: [...], erstellt }
 const WERT_ZEICHEN = { "+": "+", "0": "0", "-": "−" };
 const WERT_ART = { "+": "angenehm", "0": "neutral", "-": "unangenehm" };
 
 const checkFormular = $("#check-formular");
 let checkWert = null;           // gewählter Wert im offenen Check-Formular
+let checkKoerper = [];          // gewählte Körper-Chips im offenen Check-Formular
 let checkBearbeitetId = null;   // null = neuer Check, sonst die id des bearbeiteten Checks
 
 const checksAmTag = (datum) => checks.filter((c) => c.zeit.startsWith(datum)).sort(nachZeit);
@@ -1002,21 +1078,36 @@ function wertKnoepfeRendern() {
 function checkFormularOeffnen(check) {
   checkBearbeitetId = check.id ?? null;
   checkWert = check.wert;
+  checkKoerper = [...(check.koerper ?? [])];
   $("#c-stichwort").value = check.stichwort ?? "";
   $("#c-zeit").value = check.zeit ?? jetztLokal();
   $("#check-modus").textContent = checkBearbeitetId ? "Check bearbeiten" : "Neuer Check";
   $("#btn-check-loeschen").hidden = !checkBearbeitetId;
   checkFormular.hidden = false;
   wertKnoepfeRendern();
+  checkKoerperRendern();
 }
 
 function checkFormularSchliessen() {
   checkFormular.hidden = true;
   checkWert = null;
+  checkKoerper = [];
   checkBearbeitetId = null;
   wertKnoepfeRendern();
   document.activeElement.blur();   // Tastatur schließen
 }
+
+// Körper-Chips im Kurz-Check: dieselbe Liste wie beim ausführlichen Eintrag
+function checkKoerperRendern() {
+  $("#c-koerper").innerHTML = chipsHtml(KOERPER, (w) => checkKoerper.includes(w), "koerper");
+}
+
+$("#c-koerper").addEventListener("click", (ev) => {
+  const chip = ev.target.closest(".chip");
+  if (!chip) return;
+  checkKoerper = auswahlUmschalten(checkKoerper, chip.dataset.wort, "nichts");
+  checkKoerperRendern();
+});
 
 function checkBearbeiten(id) {
   const check = checks.find((c) => c.id === id);
@@ -1028,11 +1119,13 @@ function checkBearbeiten(id) {
 // gedrueckt: true/false in der Abend-Ansicht (antippbar zum Auswählen), sonst weglassen
 function checkZeileHtml(c, gedrueckt) {
   const druck = gedrueckt === undefined ? "" : `aria-pressed="${gedrueckt}"`;
+  const koerper = checkKoerperText(c);
   return `
     <button type="button" class="check-zeile" data-check-id="${esc(c.id)}" ${druck}>
       <span class="check-uhr">${uhrzeit(c.zeit)}</span>
       <span class="check-wert ${WERT_ART[c.wert]}">${WERT_ZEICHEN[c.wert]}</span>
-      <span class="check-wort ${c.stichwort ? "" : "ohne"}">${c.stichwort ? esc(c.stichwort) : "ohne Stichwort"}</span>
+      <span class="check-wort ${c.stichwort ? "" : "ohne"}">${c.stichwort ? esc(c.stichwort) : "ohne Stichwort"}${
+        koerper ? `<small class="check-koerper">${esc(koerper)}</small>` : ""}</span>
       ${istAusgewaehlt(c) ? `<span class="anker-marke">✓ ausgewählt</span>` : ""}
     </button>`;
 }
@@ -1042,7 +1135,7 @@ function checkAnsichtRendern() {
   const liste = checksAmTag(heute);
   $("#check-datum").textContent = tagText(heute, true);
   $("#checks-heute").innerHTML = liste.length
-    ? liste.map(checkZeileHtml).join("")
+    ? liste.map((c) => checkZeileHtml(c)).join("")
     : `<p class="leise">Noch keine Checks heute.</p>`;
 }
 
@@ -1063,7 +1156,7 @@ checkFormular.addEventListener("submit", (ev) => {
   ev.preventDefault();
   const zeit = $("#c-zeit").value;
   if (!zeit) return meldung("Bitte Datum und Uhrzeit angeben.");
-  const daten = { zeit, wert: checkWert, stichwort: $("#c-stichwort").value.trim() };
+  const daten = { zeit, wert: checkWert, stichwort: $("#c-stichwort").value.trim(), koerper: [...checkKoerper] };
 
   const neueListe = checkBearbeitetId
     ? checks.map((c) => (c.id === checkBearbeitetId ? { ...c, ...daten, geaendert: new Date().toISOString() } : c))
@@ -1174,14 +1267,19 @@ function eintragAlsText(e) {
   return zeilen.join("\n");
 }
 
+// Eine Zeile pro Check, Körper nur, wenn etwas ausgewählt ist:
 // ### Kurz-Checks 19.10.2026
-// 07:15 − zu spät aufgestanden · 09:00 + Kollegen aus dem Urlaub · 10:00 0 Besprechungen
+// 07:15 − zu spät aufgestanden · Körper: Bauch, Unruhe
+// 09:00 + Kollegen aus dem Urlaub
+function checkAlsZeile(c) {
+  const zeile = `${uhrzeit(c.zeit)} ${WERT_ZEICHEN[c.wert]}${c.stichwort ? " " + einzeilig(c.stichwort) : ""}`;
+  const koerper = checkKoerperText(c);
+  return koerper ? `${zeile} · Körper: ${koerper}` : zeile;
+}
+
 function checksAlsText(datum, tagesChecks) {
   const [j, m, t] = datum.split("-");
-  const zeile = tagesChecks.map((c) =>
-    `${uhrzeit(c.zeit)} ${WERT_ZEICHEN[c.wert]}${c.stichwort ? " " + einzeilig(c.stichwort) : ""}`
-  ).join(" · ");
-  return `### Kurz-Checks ${t}.${m}.${j}\n${zeile}`;
+  return `### Kurz-Checks ${t}.${m}.${j}\n${tagesChecks.map(checkAlsZeile).join("\n")}`;
 }
 
 // Einträge und Checks im gewählten Zeitraum, jeweils älteste zuerst
@@ -1299,7 +1397,7 @@ $("#btn-teilen").addEventListener("click", async () => {
 
 // ---------- Backup (JSON) ----------
 // Format der Datei:
-// { "app": "feel", "format": 2, "exportiert": "…", "eintraege": [...], "checks": [...] }
+// { "app": "feel", "format": 3, "appVersion": "…", "exportiert": "…", "eintraege": [...], "checks": [...] }
 function backupStandRendern() {
   const el = $("#backup-stand");
   const letztes = localStorage.getItem(BACKUP_SCHLUESSEL);
@@ -1327,10 +1425,11 @@ $("#btn-backup").addEventListener("click", () => {
 });
 
 // Liest ein Backup und prüft jeden Datensatz. Versteht auch einfachere, ältere Formen:
-//   { format: 2, eintraege: [...], checks: [...] }   aktuelles Format
-//   { eintraege: [...] }                              ohne Checks
-//   [ ... ]                                           nur eine Liste von Einträgen
+//   { format: 3 oder 2, eintraege: [...], checks: [...] }   aktuelles bzw. vorheriges Format
+//   { eintraege: [...] }                                     ohne Checks
+//   [ ... ]                                                  nur eine Liste von Einträgen
 // Unbekannte zusätzliche Felder bleiben erhalten (für spätere Versionen).
+// Besprechungen im alten Format bleiben, wie sie sind, und werden beim Anzeigen übersetzt.
 function backupLesen(inhalt) {
   let roheEintraege;
   let roheChecks = [];
@@ -1371,7 +1470,11 @@ function backupLesen(inhalt) {
       ergebnis.uebersprungen++;
       continue;
     }
-    ergebnis.checks.push({ ...c, stichwort: text(c.stichwort) });
+    ergebnis.checks.push({
+      ...c,
+      stichwort: text(c.stichwort),
+      koerper: (Array.isArray(c.koerper) ? c.koerper : []).filter((k) => typeof k === "string"),
+    });
   }
   return ergebnis;
 }
