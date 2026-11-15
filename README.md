@@ -23,10 +23,10 @@ Alle Einträge bleiben im Browser auf dem Handy. Es gibt keinen Server, kein Kon
 | `feel.entwurf.v1` | das gerade halb ausgefüllte Eintrag-Formular |
 | `feel.version` | Version der Datenstruktur (aktuell 3), für die Migration beim Start |
 | `feel.sicherung.v1`, `feel.sicherung.v2`, `feel.sicherung.v2.checks` | Sicherheitskopien von vor der jeweiligen Migration |
+| `feel.letztesBackup` | Zeitpunkt des letzten JSON-Backups |
 
 Besprechungen aus App-Version 4 und älter („ja/nein · früh/spät · Stellschraube“) bleiben unverändert
 gespeichert und werden beim Anzeigen und Exportieren in den Klartext übersetzt.
-| `feel.letztesBackup` | Zeitpunkt des letzten JSON-Backups |
 
 ## Dateien
 
